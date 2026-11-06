@@ -1,0 +1,19 @@
+# Lower bounds only for now. After the first successful build, pin exact versions:
+#   docker compose run --rm api pip freeze > requirements.lock
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.7
+pydantic-settings>=2.3
+sqlalchemy>=2.0.30
+alembic>=1.13
+psycopg[binary]>=3.2
+oracledb>=2.3
+celery[redis]>=5.4
+redis>=5.0
+langgraph>=0.2
+langgraph-checkpoint-postgres>=2.0
+google-genai>=1.0
+sqlglot>=25.0
+httpx>=0.27
+pytest>=8.0
