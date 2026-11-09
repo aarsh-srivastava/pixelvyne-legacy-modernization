@@ -167,47 +167,90 @@ def split_top_level_commas(value: str) -> list[str]:
 # 5. Parameter and return type extraction
 # ---------------------------------------------------------------------------
 
+
 def extract_params(source: str, kind: str) -> list[Param]:
-    """Extract simple routine parameters from a function/procedure header."""
+    """Extract routine parameters using balanced-parenthesis scanning."""
 
     if kind not in {"FUNCTION", "PROCEDURE"}:
         return []
 
-    match = re.search(
-        r"\b" + kind + r"\s+[\w$#\"]+\s*\((.*?)\)",
+    header_match = re.search(
+        r"\b" + kind + r"\s+[\w$#\"]+\s*\(",
         source,
         re.IGNORECASE | re.DOTALL,
     )
 
-    if not match:
+    if not header_match:
         return []
 
+    # Locate the opening parenthesis of the parameter list.
+    opening_index = source.find("(", header_match.start())
+    depth = 0
+    quote = None
+    closing_index = None
+    index = opening_index
+
+    while index < len(source):
+        char = source[index]
+
+        if quote == "'":
+            if char == "'":
+                # Oracle escapes single quotes by doubling them.
+                if index + 1 < len(source) and source[index + 1] == "'":
+                    index += 2
+                    continue
+                quote = None
+
+        elif quote == '"':
+            if char == '"':
+                quote = None
+
+        elif char in {"'", '"'}:
+            quote = char
+
+        elif char == "(":
+            depth += 1
+
+        elif char == ")":
+            depth -= 1
+
+            if depth == 0:
+                closing_index = index
+                break
+
+        index += 1
+
+    if closing_index is None:
+        return []
+
+    parameter_text = source[opening_index + 1:closing_index]
     params: list[Param] = []
 
-    for declaration in split_top_level_commas(match.group(1)):
+    for declaration in split_top_level_commas(parameter_text):
         declaration = declaration.strip()
+
         if not declaration:
             continue
 
-        # Example: p_emp_id IN NUMBER
-        # Example: p_bonus OUT NUMBER
         param_match = re.match(
             r"""
             (?P<name>"?[\w$#]+"?)
             \s+
             (?:(?P<mode>IN\s+OUT|OUT|IN)\s+)?
             (?P<type>[\w$#]+(?:\s*\([^)]*\))?)
-            (?:\s+DEFAULT\s+(?P<default>.+))?
+            (?:\s+(?:DEFAULT|:=)\s+(?P<default>.+))?
             """,
             declaration,
-            re.IGNORECASE | re.VERBOSE,
+            re.IGNORECASE | re.VERBOSE | re.DOTALL,
         )
 
         if not param_match:
             continue
 
         mode_text = re.sub(
-            r"\s+", " ", (param_match.group("mode") or "IN").upper()
+            r"\s+",
+            " ",
+            (param_match.group("mode") or "IN").upper(),
         )
 
         mode = {
@@ -248,33 +291,57 @@ def extract_return_type(source: str, kind: str) -> str | None:
 # 6. Table reads, writes and Oracle features
 # ---------------------------------------------------------------------------
 
+
 def extract_table_references(source: str) -> tuple[list[str], list[str]]:
-    """Return basic table read and write references."""
+    """Return basic table read and write references.
+
+    Schema-qualified names are normalized to their final object name.
+    Example: HR.EMPLOYEES -> EMPLOYEES
+    """
 
     reads: set[str] = set()
     writes: set[str] = set()
 
+    identifier = r'(?:"[^"]+"|[\w$#]+)'
+    qualified_name = rf'{identifier}(?:\s*\.\s*{identifier})?'
+
     read_pattern = re.compile(
-        r"\b(?:FROM|JOIN)\s+([A-Z][\w$#]*)",
+        rf"\b(?:FROM|JOIN)\s+({qualified_name})",
         re.IGNORECASE,
     )
 
     write_patterns = [
-        re.compile(r"\bINSERT\s+INTO\s+([A-Z][\w$#]*)", re.IGNORECASE),
-        re.compile(r"\bUPDATE\s+([A-Z][\w$#]*)", re.IGNORECASE),
-        re.compile(r"\bDELETE\s+FROM\s+([A-Z][\w$#]*)", re.IGNORECASE),
-        re.compile(r"\bMERGE\s+INTO\s+([A-Z][\w$#]*)", re.IGNORECASE),
+        re.compile(
+            rf"\bINSERT\s+INTO\s+({qualified_name})",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            rf"\bUPDATE\s+({qualified_name})",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            rf"\bDELETE\s+FROM\s+({qualified_name})",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            rf"\bMERGE\s+INTO\s+({qualified_name})",
+            re.IGNORECASE,
+        ),
     ]
 
+    def extract_object_name(value: str) -> str:
+        parts = re.split(r"\s*\.\s*", value.strip())
+        return normalize_name(parts[-1])
+
     for match in read_pattern.finditer(source):
-        reads.add(normalize_name(match.group(1)))
+        reads.add(extract_object_name(match.group(1)))
 
     for pattern in write_patterns:
         for match in pattern.finditer(source):
-            writes.add(normalize_name(match.group(1)))
+            writes.add(extract_object_name(match.group(1)))
 
-    # An object being written to is not necessarily a read dependency.
     return sorted(reads), sorted(writes)
+
 
 
 ORACLE_FEATURE_PATTERNS = {
