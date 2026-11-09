@@ -110,9 +110,9 @@ def test_extracts_schema_qualified_table_references():
 
     reads, writes = extract_table_references(source)
 
-    assert "EMPLOYEES" in reads
-    assert "DEPARTMENTS" in reads
-
+    assert "HR.EMPLOYEES" in reads
+    assert "HR.DEPARTMENTS" in reads
+    assert writes == []
 
 def test_extracts_schema_qualified_insert_target():
     source = """
@@ -122,4 +122,20 @@ def test_extracts_schema_qualified_insert_target():
 
     reads, writes = extract_table_references(source)
 
+    assert "HR.EMPLOYEES" in writes
+
+def test_trigger_update_of_does_not_extract_of_as_table():
+    source = """
+    CREATE OR REPLACE TRIGGER trg_employee_salary
+    BEFORE UPDATE OF salary ON employees
+    FOR EACH ROW
+    BEGIN
+        NULL;
+    END;
+    """
+
+    reads, writes = extract_table_references(source)
+
+    assert "OF" not in reads
+    assert "OF" not in writes
     assert "EMPLOYEES" in writes
