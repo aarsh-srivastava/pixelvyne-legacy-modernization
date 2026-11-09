@@ -1,7 +1,8 @@
 """Run one TestCase against the converted PostgreSQL object in target-db.
 
-Mirrors oracle_runner: same TestCase in, same ExecutionResult shape out, rolled back
-afterwards. Only ever connect this to target-db: converted code is untrusted.
+Mirrors oracle_runner: same TestCase in, same ExecutionResult shape out, watched tables
+snapshotted before and after, rolled back afterwards. Only ever connect this to
+target-db: converted code is untrusted.
 
 A converted procedure is called with CALL; its OUT parameters come back as one row.
 A package member is called as <package>.<name>, the schema Ora2Pg puts it in.
@@ -10,6 +11,7 @@ A package member is called as <package>.<name>, the schema Ora2Pg puts it in.
 from __future__ import annotations
 
 import time
+from typing import Iterable
 
 import psycopg
 from psycopg import sql
@@ -21,8 +23,18 @@ from app.contracts.models import (
     IRObject,
     ObjectType,
     ParamMode,
+    TableDiff,
     TestCase,
 )
+from app.validation.table_diff import check_identifier, diff_snapshots
+
+PK_SQL = """
+    SELECT a.attname
+      FROM pg_index i
+      JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY (i.indkey)
+     WHERE i.indrelid = %s::regclass AND i.indisprimary
+     ORDER BY array_position(i.indkey::int2[], a.attnum)
+"""
 
 
 def _routine_name(obj: IRObject) -> sql.Composable:
@@ -34,11 +46,25 @@ def _routine_name(obj: IRObject) -> sql.Composable:
     return name
 
 
-def run_postgres(conn: psycopg.Connection, obj: IRObject, case: TestCase) -> ExecutionResult:
+def _snapshot(cur, table: str) -> tuple[list[str], list[dict]]:
+    name = check_identifier(table).lower()
+    cur.execute(PK_SQL, [name])
+    key_columns = [r["attname"] for r in cur.fetchall()]
+    cur.execute(sql.SQL("SELECT * FROM {}").format(sql.Identifier(name)))
+    return key_columns, [dict(r) for r in cur.fetchall()]
+
+
+def run_postgres(
+    conn: psycopg.Connection,
+    obj: IRObject,
+    case: TestCase,
+    watch_tables: Iterable[str] = (),
+) -> ExecutionResult:
     started = time.perf_counter()
     return_value = None
     out_params: dict = {}
     error = None
+    table_diffs: list[TableDiff] = []
 
     placeholders: list[sql.Composable] = []
     values: list = []
@@ -56,6 +82,8 @@ def run_postgres(conn: psycopg.Connection, obj: IRObject, case: TestCase) -> Exe
 
     try:
         with conn.cursor(row_factory=dict_row) as cur:
+            before = {t: _snapshot(cur, t) for t in watch_tables}
+
             if obj.type == ObjectType.PROCEDURE:
                 cur.execute(sql.SQL("CALL {}({})").format(_routine_name(obj), arg_list), values)
                 row = cur.fetchone() if out_names else None
@@ -69,9 +97,15 @@ def run_postgres(conn: psycopg.Connection, obj: IRObject, case: TestCase) -> Exe
             else:
                 raise NotImplementedError(f"Postgres runner cannot execute a {obj.type.value} yet")
 
+            for table, (keys, rows_before) in before.items():
+                diff = diff_snapshots(table.lower(), keys, rows_before, _snapshot(cur, table)[1])
+                if diff:
+                    table_diffs.append(diff)
+
     except psycopg.Error as exc:
         message = (str(exc).strip().splitlines() or [type(exc).__name__])[0]
         error = ExecutionError(code=exc.sqlstate, message=message)
+        out_params, table_diffs = {}, []
     finally:
         conn.rollback()
 
@@ -80,6 +114,7 @@ def run_postgres(conn: psycopg.Connection, obj: IRObject, case: TestCase) -> Exe
         test_id=case.test_id,
         return_value=return_value,
         out_params=out_params,
+        table_diffs=table_diffs,
         error=error,
         duration_ms=round((time.perf_counter() - started) * 1000, 2),
     )
