@@ -135,6 +135,47 @@ def test_updated_row_values_compared_by_key():
     assert [d.path for d in outcome.diffs] == ["table_diffs.employees.updated[emp_id=104].base_salary"]
 
 
+def _audit_update(audit_id, old_type, new_type, emp_id=104):
+    before = {"audit_id": audit_id, "emp_id": emp_id, "change_type": old_type}
+    return {"key": {"audit_id": audit_id}, "before": before, "after": {**before, "change_type": new_type}}
+
+
+MASK_AUDIT_ID = {"salary_audit": {"audit_id", "changed_on"}}
+
+
+def test_regression_updates_keyed_by_generated_id_match_by_content():
+    # Same update on both engines, but the row's sequence-generated id differs (7 vs 1).
+    # Keyed by the masked id this used to report one missing + one extra update.
+    src = TableDiff(table="salary_audit", updated=[_audit_update(7, "RAISE", "CUT")])
+    tgt = TableDiff(table="salary_audit", updated=[_audit_update(1, "RAISE", "CUT")])
+    outcome = compare(CASE, result("oracle", table_diffs=[src]), result("postgres", table_diffs=[tgt]),
+                      masked_columns=MASK_AUDIT_ID)
+    assert outcome.status == TestStatus.PASSED, outcome.diffs
+
+
+def test_updates_keyed_by_generated_id_still_catch_a_wrong_change():
+    src = TableDiff(table="salary_audit", updated=[_audit_update(7, "RAISE", "CUT")])
+    tgt = TableDiff(table="salary_audit", updated=[_audit_update(1, "RAISE", "RAISE-FIX")])
+    outcome = compare(CASE, result("oracle", table_diffs=[src]), result("postgres", table_diffs=[tgt]),
+                      masked_columns=MASK_AUDIT_ID)
+    assert outcome.status == TestStatus.FAILED
+    assert sorted((d.path, d.kind) for d in outcome.diffs) == [
+        ("table_diffs.salary_audit.updated", "extra"),
+        ("table_diffs.salary_audit.updated", "missing"),
+    ]
+    assert all("audit_id" not in (d.source_value or d.target_value) for d in outcome.diffs)
+
+
+def test_updates_keyed_by_generated_id_count_each_row():
+    # Oracle updates two identical-looking rows, PostgreSQL only one: still a failure.
+    src = TableDiff(table="salary_audit", updated=[_audit_update(7, "RAISE", "CUT"),
+                                                   _audit_update(8, "RAISE", "CUT")])
+    tgt = TableDiff(table="salary_audit", updated=[_audit_update(1, "RAISE", "CUT")])
+    outcome = compare(CASE, result("oracle", table_diffs=[src]), result("postgres", table_diffs=[tgt]),
+                      masked_columns=MASK_AUDIT_ID)
+    assert [(d.path, d.kind) for d in outcome.diffs] == [("table_diffs.salary_audit.updated", "missing")]
+
+
 def test_snapshot_diff_finds_insert_update_delete():
     before = [{"id": 1, "v": "a"}, {"id": 2, "v": "b"}]
     after = [{"id": 1, "v": "a"}, {"id": 2, "v": "B"}, {"id": 3, "v": "c"}]

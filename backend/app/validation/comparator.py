@@ -9,7 +9,8 @@ Rules:
   conversion being wrong.
 * Rows and table side effects compare as sets by default: database row order is not
   guaranteed without ORDER BY. Pass ordered_rows=True when order is part of the contract.
-* Masked columns (sequence ids, timestamps) are left out of table comparisons.
+* Masked columns (sequence ids, timestamps) are left out of table comparisons. Updated
+  rows are matched by primary key, or by content when the key itself is masked.
 * Every difference becomes a FieldDiff with a path, so the repair step can tell the
   converter exactly what went wrong.
 """
@@ -86,6 +87,50 @@ def _changed(update: dict, masked: set[str]) -> dict:
     return {**update["key"], **changed}
 
 
+def _compare_updates(base: str, s_updates: list[dict], t_updates: list[dict],
+                     masked: set[str], diffs: list[FieldDiff]) -> None:
+    """Match updated rows across engines, then compare their new values.
+
+    Normally rows are matched by primary key. If the key includes a masked column
+    (a sequence-generated id), the two engines may hold the same row under different
+    ids, so the key cannot identify it. Those updates are matched by content instead:
+    the row before the change plus the row after it, masked columns left out, compared
+    as a multiset so every updated row still counts.
+    """
+    key_columns = {c for u in [*s_updates, *t_updates] for c in u["key"]}
+
+    if key_columns & masked:
+        def signature(u):
+            return canon_row(u["before"], masked), canon_row(u["after"], masked)
+
+        src_c = Counter(signature(u) for u in s_updates)
+        tgt_c = Counter(signature(u) for u in t_updates)
+        first = {}
+        for u in [*s_updates, *t_updates]:
+            first.setdefault(signature(u), strip(u["after"], masked))
+        path = f"{base}.updated"
+        for sig in sorted((src_c - tgt_c).elements(), key=str):
+            diffs.append(FieldDiff(path=path, source_value=first[sig], kind="missing"))
+        for sig in sorted((tgt_c - src_c).elements(), key=str):
+            diffs.append(FieldDiff(path=path, target_value=first[sig], kind="extra"))
+        return
+
+    s_up = {canon_row(u["key"]): u for u in s_updates}
+    t_up = {canon_row(u["key"]): u for u in t_updates}
+    for k in sorted(s_up.keys() | t_up.keys(), key=str):
+        key_label = ",".join(f"{c}={v}" for c, v in k)
+        path = f"{base}.updated[{key_label}]"
+        if k not in t_up:
+            diffs.append(FieldDiff(path=path, source_value=_changed(s_up[k], masked), kind="missing"))
+        elif k not in s_up:
+            diffs.append(FieldDiff(path=path, target_value=_changed(t_up[k], masked), kind="extra"))
+        else:
+            s_after, t_after = s_up[k]["after"], t_up[k]["after"]
+            for col in sorted((set(s_after) | set(t_after)) - masked):
+                _compare_value(f"{path}.{col}", s_after.get(col, _MISSING),
+                               t_after.get(col, _MISSING), diffs)
+
+
 def _compare_table_diffs(source: list[TableDiff], target: list[TableDiff],
                          masked_columns: dict[str, set[str]], diffs: list[FieldDiff]) -> None:
     src = {d.table.lower(): d for d in source}
@@ -97,23 +142,7 @@ def _compare_table_diffs(source: list[TableDiff], target: list[TableDiff],
         base = f"table_diffs.{table}"
         _compare_row_sets(f"{base}.inserted", s.inserted, t.inserted, masked, diffs)
         _compare_row_sets(f"{base}.deleted", s.deleted, t.deleted, masked, diffs)
-
-        def by_key(updates):
-            return {canon_row(u["key"]): u for u in updates}
-
-        s_up, t_up = by_key(s.updated), by_key(t.updated)
-        for k in sorted(s_up.keys() | t_up.keys(), key=str):
-            key_label = ",".join(f"{c}={v}" for c, v in k)
-            path = f"{base}.updated[{key_label}]"
-            if k not in t_up:
-                diffs.append(FieldDiff(path=path, source_value=_changed(s_up[k], masked), kind="missing"))
-            elif k not in s_up:
-                diffs.append(FieldDiff(path=path, target_value=_changed(t_up[k], masked), kind="extra"))
-            else:
-                s_after, t_after = s_up[k]["after"], t_up[k]["after"]
-                for col in sorted((set(s_after) | set(t_after)) - masked):
-                    _compare_value(f"{path}.{col}", s_after.get(col, _MISSING),
-                                   t_after.get(col, _MISSING), diffs)
+        _compare_updates(base, s.updated, t.updated, masked, diffs)
 
 
 def compare(
