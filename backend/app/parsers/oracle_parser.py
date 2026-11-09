@@ -292,86 +292,80 @@ def extract_return_type(source: str, kind: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def extract_table_references(source: str) -> tuple[list[str], list[str]]:
-    """Return basic table read and write references.
 
-    Schema-qualified names are normalized to their final object name.
-    Example: HR.EMPLOYEES -> EMPLOYEES
+def extract_table_references(source: str) -> tuple[list[str], list[str]]:
+    """Extract table read and write references from Oracle SQL/PLSQL.
+
+    Schema-qualified names are preserved.
+    Example: HR.EMPLOYEES -> HR.EMPLOYEES
     """
 
     reads: set[str] = set()
     writes: set[str] = set()
 
+    # Support regular and quoted Oracle identifiers.
     identifier = r'(?:"[^"]+"|[\w$#]+)'
     qualified_name = rf'{identifier}(?:\s*\.\s*{identifier})?'
 
-    read_pattern = re.compile(
-        rf"\b(?:FROM|JOIN)\s+({qualified_name})",
-        re.IGNORECASE,
-    )
+    def extract_object_name(value: str) -> str:
+        """Normalize identifiers while preserving schema qualification."""
+        parts = re.split(r"\s*\.\s*", value.strip())
+        return ".".join(normalize_name(part) for part in parts)
 
+    # Tables referenced by FROM and JOIN.
+    read_patterns = [
+        re.compile(
+            rf"\bFROM\s+({qualified_name})",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            rf"\bJOIN\s+({qualified_name})",
+            re.IGNORECASE,
+        ),
+    ]
+
+    # Tables modified by DML or Oracle trigger declarations.
     write_patterns = [
+        # Trigger: BEFORE UPDATE OF salary ON employees
+        re.compile(
+            rf"\bUPDATE\s+OF\s+.+?\s+ON\s+({qualified_name})",
+            re.IGNORECASE | re.DOTALL,
+        ),
+
+        # Normal UPDATE: UPDATE employees SET ...
+        re.compile(
+            rf"\bUPDATE\s+(?!OF\b)({qualified_name})",
+            re.IGNORECASE,
+        ),
+
+        # INSERT INTO employees
         re.compile(
             rf"\bINSERT\s+INTO\s+({qualified_name})",
             re.IGNORECASE,
         ),
-        re.compile(
-            rf"\bUPDATE\s+({qualified_name})",
-            re.IGNORECASE,
-        ),
+
+        # DELETE FROM employees
         re.compile(
             rf"\bDELETE\s+FROM\s+({qualified_name})",
             re.IGNORECASE,
         ),
+
+        # MERGE INTO employees
         re.compile(
             rf"\bMERGE\s+INTO\s+({qualified_name})",
             re.IGNORECASE,
         ),
     ]
 
-    def extract_object_name(value: str) -> str:
-        parts = re.split(r"\s*\.\s*", value.strip())
-        return normalize_name(parts[-1])
-
-    for match in read_pattern.finditer(source):
-        reads.add(extract_object_name(match.group(1)))
+    for pattern in read_patterns:
+        for match in pattern.finditer(source):
+            reads.add(extract_object_name(match.group(1)))
 
     for pattern in write_patterns:
         for match in pattern.finditer(source):
             writes.add(extract_object_name(match.group(1)))
 
     return sorted(reads), sorted(writes)
-
-
-
-ORACLE_FEATURE_PATTERNS = {
-    "NVL": r"\bNVL\s*\(",
-    "DECODE": r"\bDECODE\s*\(",
-    "ROWNUM": r"\bROWNUM\b",
-    "SYSDATE": r"\bSYSDATE\b",
-    "CONNECT_BY": r"\bCONNECT\s+BY\b",
-    "START_WITH": r"\bSTART\s+WITH\b",
-    "SYS_CONNECT_BY_PATH": r"\bSYS_CONNECT_BY_PATH\s*\(",
-    "SEQUENCE_NEXTVAL": r"\b[\w$#]+\.NEXTVAL\b",
-    "SEQUENCE_CURRVAL": r"\b[\w$#]+\.CURRVAL\b",
-    "DUAL": r"\bFROM\s+DUAL\b",
-    "PRAGMA": r"\bPRAGMA\b",
-    "EXCEPTION": r"\bEXCEPTION\b",
-    "BULK_COLLECT": r"\bBULK\s+COLLECT\b",
-    "FORALL": r"\bFORALL\b",
-    "AUTONOMOUS_TRANSACTION": r"\bAUTONOMOUS_TRANSACTION\b",
-}
-
-
-def extract_oracle_features(source: str) -> list[str]:
-    features = []
-
-    for feature, pattern in ORACLE_FEATURE_PATTERNS.items():
-        if re.search(pattern, source, re.IGNORECASE):
-            features.append(feature)
-
-    return sorted(features)
-
 
 # ---------------------------------------------------------------------------
 # 7. Dependency extraction
@@ -398,7 +392,35 @@ def extract_dependencies(
             dependencies.append(name)
 
     return sorted(dependencies)
+ORACLE_FEATURE_PATTERNS = {
+    "NVL": r"\bNVL\s*\(",
+    "DECODE": r"\bDECODE\s*\(",
+    "ROWNUM": r"\bROWNUM\b",
+    "SYSDATE": r"\bSYSDATE\b",
+    "CONNECT_BY": r"\bCONNECT\s+BY\b",
+    "START_WITH": r"\bSTART\s+WITH\b",
+    "SYS_CONNECT_BY_PATH": r"\bSYS_CONNECT_BY_PATH\s*\(",
+    "SEQUENCE_NEXTVAL": r"\b[\w$#]+\.NEXTVAL\b",
+    "SEQUENCE_CURRVAL": r"\b[\w$#]+\.CURRVAL\b",
+    "DUAL": r"\bFROM\s+DUAL\b",
+    "PRAGMA": r"\bPRAGMA\b",
+    "EXCEPTION": r"\bEXCEPTION\b",
+    "BULK_COLLECT": r"\bBULK\s+COLLECT\b",
+    "FORALL": r"\bFORALL\b",
+    "AUTONOMOUS_TRANSACTION": r"\bAUTONOMOUS_TRANSACTION\b",
+}
 
+
+def extract_oracle_features(source: str) -> list[str]:
+    """Identify Oracle-specific SQL and PL/SQL constructs."""
+
+    features = []
+
+    for feature, pattern in ORACLE_FEATURE_PATTERNS.items():
+        if re.search(pattern, source, re.IGNORECASE):
+            features.append(feature)
+
+    return sorted(features)
 
 # ---------------------------------------------------------------------------
 # 8. Main parser
