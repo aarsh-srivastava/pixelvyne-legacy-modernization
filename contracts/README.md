@@ -49,7 +49,7 @@ chooses target names.
 | `IRObject.object_id` | the object's own canonical id |
 | `IRObject.depends_on` | canonical ids of prerequisites, including `unresolved:` |
 | `IRObject.reads_tables`, `writes_tables` | bare lower-case table names (watched by the harness) |
-| `IRObject.trigger.table` | canonical id of the table or view a trigger fires on |
+| `IRObject.trigger.table` | canonical id of the table or view a trigger fires on (never `unresolved:`) |
 | `TestCase.object_id`, `ConversionResult.object_id`, ... | canonical ids |
 
 ## Triggers
@@ -61,6 +61,10 @@ For `AFTER UPDATE OF base_salary ON employees FOR EACH ROW ... INSERT INTO salar
 - `trigger.timing = "after"`, `trigger.events = ["update"]`
 - `trigger.update_columns = ["base_salary"]`, `trigger.for_each_row = True`
 - `writes_tables = ["salary_audit"]`. The fired-on table is not a write.
+
+`trigger.table` must be a resolved table or view id. If the fired-on table is not in the
+upload, the trigger gets `trigger=None`, the reference stays in `depends_on` as
+`unresolved:...`, and the planner raises a `missing_dependency` blocker.
 
 ## Tests
 

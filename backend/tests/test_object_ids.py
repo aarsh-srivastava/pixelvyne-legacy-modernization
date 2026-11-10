@@ -209,6 +209,7 @@ def test_trigger_info_for_the_sample_trigger():
 @pytest.mark.parametrize("kwargs", [
     dict(table="EMPLOYEES", timing="after", events=["update"]),                   # raw name
     dict(table="procedure:legacy.calc_bonus", timing="after", events=["update"]), # not a table
+    dict(table="unresolved:legacy.employees", timing="after", events=["update"]), # target must be resolved
     dict(table="table:legacy.employees", timing="after", events=[]),               # no event
     dict(table="table:legacy.employees", timing="after", events=["update", "update"]),
     dict(table="table:legacy.employees", timing="later", events=["update"]),

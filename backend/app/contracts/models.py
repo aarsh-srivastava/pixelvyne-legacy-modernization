@@ -79,9 +79,13 @@ class TriggerInfo(BaseModel):
         table="table:legacy.employees", timing="after", events=["update"],
         update_columns=["base_salary"], for_each_row=True
     and writes_tables=["salary_audit"]. The fired-on table is also in depends_on.
+
+    If the fired-on table is not in the upload, the trigger gets no TriggerInfo
+    (trigger=None); the reference stays in depends_on as "unresolved:...", which the
+    planner turns into a missing_dependency blocker.
     """
 
-    table: str                         # canonical object_id of the table or view it fires on
+    table: str                         # canonical table or view object_id, never unresolved
     timing: Literal["before", "after", "instead_of"]
     events: list[Literal["insert", "update", "delete"]]
     update_columns: list[str] = Field(default_factory=list)   # UPDATE OF ..., normalized
@@ -90,7 +94,7 @@ class TriggerInfo(BaseModel):
     @field_validator("table")
     @classmethod
     def _table_is_canonical(cls, value: str) -> str:
-        if parse_object_id(value).kind not in {"table", "view", "unresolved"}:
+        if parse_object_id(value).kind not in {"table", "view"}:
             raise ValueError(f"Trigger target must be a table or view object_id, got {value!r}")
         return value
 
