@@ -5,9 +5,28 @@ from app.parsers.oracle_parser import (
     parse_sources,
     remove_comments,
     split_top_level_commas,
+    extract_trigger_metadata,
 )
 
+def test_extracts_schema_qualified_trigger_table():
+    source = """
+    CREATE OR REPLACE TRIGGER emp_salary_audit_trg
+    AFTER UPDATE OF base_salary
+    ON HR.EMPLOYEES
+    FOR EACH ROW
+    BEGIN
+        NULL;
+    END;
+    """
 
+    metadata = extract_trigger_metadata(source)
+
+    assert metadata is not None
+    assert metadata["table_reference"] == "HR.EMPLOYEES"
+    assert metadata["timing"] == "after"
+    assert metadata["events"] == ["update"]
+    assert metadata["update_columns"] == ["base_salary"]
+    assert metadata["for_each_row"] is True
 def test_comment_containing_sql_keywords_is_removed():
     sql = """
     CREATE TABLE employees (id NUMBER);
@@ -100,6 +119,7 @@ def test_extract_params_handles_default_string_with_comma():
     assert params[0].default_expr == "'Hello, World'"
 
 
+
 def test_extracts_schema_qualified_table_references():
     source = """
     SELECT *
@@ -110,9 +130,10 @@ def test_extracts_schema_qualified_table_references():
 
     reads, writes = extract_table_references(source)
 
-    assert "HR.EMPLOYEES" in reads
-    assert "HR.DEPARTMENTS" in reads
+    assert "hr.employees" in reads
+    assert "hr.departments" in reads
     assert writes == []
+
 
 def test_extracts_schema_qualified_insert_target():
     source = """
@@ -122,7 +143,8 @@ def test_extracts_schema_qualified_insert_target():
 
     reads, writes = extract_table_references(source)
 
-    assert "HR.EMPLOYEES" in writes
+    assert "hr.employees" in writes
+
 
 def test_trigger_update_of_does_not_extract_of_as_table():
     source = """
@@ -136,6 +158,6 @@ def test_trigger_update_of_does_not_extract_of_as_table():
 
     reads, writes = extract_table_references(source)
 
-    assert "OF" not in reads
-    assert "OF" not in writes
-    assert "EMPLOYEES" in writes
+    assert "of" not in reads
+    assert "of" not in writes
+    assert writes == []

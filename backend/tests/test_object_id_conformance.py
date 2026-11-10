@@ -25,7 +25,6 @@ from app.parsers.oracle_parser import parse_sources
 SAMPLES = Path(__file__).resolve().parents[2] / "samples" / "oracle"
 SCHEMA = default_schema("legacy")
 
-pending_pr_b = pytest.mark.xfail(strict=True, reason="PR B: parser adopts canonical object_ids")
 
 
 @pytest.fixture(scope="module")
@@ -47,7 +46,7 @@ def test_sample_objects_have_no_identity_collisions(objects):
     check_unique_object_ids((o.object_id, f"{o.name} in {o.source_file}") for o in objects)
 
 
-@pending_pr_b
+
 def test_every_object_id_is_canonical_in_the_default_schema(objects):
     for obj in objects:
         ref = parse_object_id(obj.object_id)
@@ -56,21 +55,21 @@ def test_every_object_id_is_canonical_in_the_default_schema(objects):
         assert (ref.name, ref.package) == (obj.name, obj.package), obj.object_id
 
 
-@pending_pr_b
+
 def test_every_dependency_is_a_canonical_object_id(objects):
     for obj in objects:
         bad = [d for d in obj.depends_on if not is_object_id(d)]
         assert not bad, f"{obj.object_id} depends_on {bad}"
 
 
-@pending_pr_b
+
 def test_names_params_and_tables_are_lower_case(objects):
     for obj in objects:
         texts = [obj.name, *(p.name for p in obj.params), *obj.reads_tables, *obj.writes_tables]
         assert all(t == t.lower() for t in texts), obj.object_id
 
 
-@pending_pr_b
+
 def test_package_members_are_their_own_objects(by_id):
     net_pay = by_id[_id("function", "net_pay", package="payroll_pkg")]
     close_month = by_id[_id("procedure", "close_month", package="payroll_pkg")]
@@ -78,14 +77,14 @@ def test_package_members_are_their_own_objects(by_id):
     assert [p.name for p in close_month.params] == ["p_pay_month", "p_total"]
 
 
-@pending_pr_b
+
 def test_package_constant_reference_depends_on_the_package(by_id):
     monthly = by_id[_id("procedure", "monthly_payroll")]
     assert _id("package", "payroll_pkg") in monthly.depends_on
     assert _id("sequence", "payroll_run_seq") in monthly.depends_on
 
 
-@pending_pr_b
+
 def test_trigger_metadata_is_separate_from_its_writes(by_id):
     trigger = by_id[_id("trigger", "emp_salary_audit_trg")]
     assert trigger.trigger == TriggerInfo(table=_id("table", "employees"), timing="after",
@@ -95,7 +94,6 @@ def test_trigger_metadata_is_separate_from_its_writes(by_id):
     assert _id("table", "employees") in trigger.depends_on
 
 
-@pending_pr_b
 def test_execution_order_uses_object_ids(objects):
     order = analyze_dependencies(objects).execution_order
     assert set(order) == {o.object_id for o in objects}

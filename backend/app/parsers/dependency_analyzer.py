@@ -1,28 +1,22 @@
 
 """Dependency analysis for parsed Oracle database objects.
 
-The analyzer builds a typed dependency graph from IR objects.
+The analyzer builds a typed dependency graph from canonical object IDs.
 
 Edge convention:
     dependent -> dependency
 
-For example:
-    EMPLOYEE_VIEW -> EMPLOYEES
-
-The migration execution order is calculated separately, with prerequisites
-appearing before the objects that depend on them.
-
-This is a first-pass static analyzer, not a complete PL/SQL semantic analyzer.
+Migration execution order is dependency-first.
 """
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Iterable
 
-from app.contracts.models import IRObject, ObjectType
+from app.contracts.models import IRObject
+from app.contracts import parse_object_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,108 +42,6 @@ class DependencyGraph:
         return bool(self.cycles)
 
 
-def _normalize_identifier(identifier: str) -> str:
-    """Normalize an unqualified SQL identifier."""
-
-    return identifier.strip().strip('"').upper()
-
-
-def _extract_references(
-    obj: IRObject,
-    objects_by_name: dict[str, IRObject],
-) -> set[str]:
-    """Extract references to known objects from an object's source."""
-
-    source = obj.source_code or ""
-    references: set[str] = set()
-
-    tables = {
-        name
-        for name, candidate in objects_by_name.items()
-        if candidate.type == ObjectType.TABLE
-    }
-
-    sequences = {
-        name
-        for name, candidate in objects_by_name.items()
-        if candidate.type == ObjectType.SEQUENCE
-    }
-
-    packages = {
-        name
-        for name, candidate in objects_by_name.items()
-        if candidate.type == ObjectType.PACKAGE
-    }
-
-    routines = {
-        name
-        for name, candidate in objects_by_name.items()
-        if candidate.type in {ObjectType.FUNCTION, ObjectType.PROCEDURE}
-    }
-
-    # 1. Table reads and writes already identified by the Oracle parser.
-    references.update(
-        name for name in obj.reads_tables if name in tables
-    )
-    references.update(
-        name for name in obj.writes_tables if name in tables
-    )
-
-    # 2. Foreign-key references.
-    for match in re.finditer(
-        r"\bREFERENCES\s+(?:[\w$#]+\.)?([\w$#]+)",
-        source,
-        re.IGNORECASE,
-    ):
-        name = _normalize_identifier(match.group(1))
-        if name in tables:
-            references.add(name)
-
-    # 3. Trigger attachment: CREATE TRIGGER ... ON table.
-    if obj.type == ObjectType.TRIGGER:
-        for match in re.finditer(
-            r"\bON\s+(?:[\w$#]+\.)?([\w$#]+)",
-            source,
-            re.IGNORECASE,
-        ):
-            name = _normalize_identifier(match.group(1))
-            if name in tables:
-                references.add(name)
-
-    # 4. Sequence references such as payroll_run_seq.NEXTVAL.
-    for match in re.finditer(
-        r"\b([\w$#]+)\s*\.\s*(?:NEXTVAL|CURRVAL)\b",
-        source,
-        re.IGNORECASE,
-    ):
-        name = _normalize_identifier(match.group(1))
-        if name in sequences:
-            references.add(name)
-
-    # 5. Package-qualified references, including methods and constants.
-    for match in re.finditer(
-        r"\b([\w$#]+)\s*\.\s*[\w$#]+",
-        source,
-        re.IGNORECASE,
-    ):
-        name = _normalize_identifier(match.group(1))
-        if name in packages:
-            references.add(name)
-
-    # 6. Direct function/procedure calls.
-    for match in re.finditer(
-        r"\b([\w$#]+)\s*\(",
-        source,
-        re.IGNORECASE,
-    ):
-        name = _normalize_identifier(match.group(1))
-        if name in routines:
-            references.add(name)
-
-    references.discard(obj.name)
-    return references
-
-
 def _find_cycles(
     nodes: set[str],
     edges: set[tuple[str, str]],
@@ -158,8 +50,6 @@ def _find_cycles(
 
     adjacency: dict[str, list[str]] = defaultdict(list)
 
-    # Convert dependent -> dependency into dependency -> dependent.
-    # SCC membership is unchanged by reversing every edge.
     for dependent, dependency in edges:
         adjacency[dependency].append(dependent)
 
@@ -198,7 +88,6 @@ def _find_cycles(
                 if member == node:
                     break
 
-            # A multi-node component is cyclic. A self-loop is also cyclic.
             if len(component) > 1 or (node, node) in edges:
                 components.append(tuple(sorted(component)))
 
@@ -215,7 +104,6 @@ def _topological_order(
 ) -> tuple[str, ...]:
     """Return a dependency-first order using Kahn's algorithm."""
 
-    # dependency -> dependent is the direction required for execution.
     adjacency: dict[str, set[str]] = defaultdict(set)
     indegree = {node: 0 for node in nodes}
 
@@ -227,9 +115,9 @@ def _topological_order(
             adjacency[dependency].add(dependent)
             indegree[dependent] += 1
 
-    ready = deque(sorted(
-        node for node, degree in indegree.items() if degree == 0
-    ))
+    ready = deque(
+        sorted(node for node, degree in indegree.items() if degree == 0)
+    )
 
     order: list[str] = []
 
@@ -249,40 +137,44 @@ def _topological_order(
 def analyze_dependencies(
     objects: Iterable[IRObject],
 ) -> DependencyGraph:
-    """Build a typed dependency graph from parsed IR objects."""
+    """Build a dependency graph using canonical object identities."""
 
     objects = list(objects)
 
-    objects_by_name: dict[str, IRObject] = {}
+    objects_by_id: dict[str, IRObject] = {}
 
     for obj in objects:
-        name = _normalize_identifier(obj.name)
-
-        if name in objects_by_name:
+        if obj.object_id in objects_by_id:
             raise ValueError(
-                f"Duplicate object name '{name}'. "
-                "Overloaded or schema-qualified objects need "
-                "a richer object identity before graph construction."
+                f"Duplicate object name or identity '{obj.object_id}'."
             )
 
-        objects_by_name[name] = obj
+        objects_by_id[obj.object_id] = obj
 
-    nodes = set(objects_by_name)
+    nodes = set(objects_by_id)
     edge_pairs: set[tuple[str, str]] = set()
 
     for obj in objects:
-        dependent = _normalize_identifier(obj.name)
+        dependent = obj.object_id
 
-        references = _extract_references(obj, objects_by_name)
+        for dependency in obj.depends_on:
+            # Unresolved references are retained in the IR, but cannot
+            # participate in an executable graph of discovered objects.
+            if dependency not in nodes:
+                continue
 
-        for dependency in references:
+            if dependency == dependent:
+                continue
+
             edge_pairs.add((dependent, dependency))
 
     edges = tuple(
         DependencyEdge(
             dependent=dependent,
             dependency=dependency,
-            dependency_type=objects_by_name[dependency].type.value,
+            dependency_type=parse_object_id(
+                dependency
+            ).kind,
         )
         for dependent, dependency in sorted(edge_pairs)
     )
