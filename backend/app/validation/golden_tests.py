@@ -13,12 +13,18 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from app.config import settings
+from app.contracts import default_schema, make_object_id
 from app.contracts.models import TestCase
 
-CALC_BONUS = "procedure:calc_bonus"
-GET_EMP_GRADE = "function:get_emp_grade"
-TOP_EARNERS = "function:top_earners"
-APPLY_RAISE = "procedure:apply_raise"
+# Canonical ids (contract 0.2), in the same schema the parser assigns to the
+# unqualified sample objects, so the keys always match parser output.
+SAMPLE_SCHEMA = default_schema(settings.ORACLE_USER)
+
+CALC_BONUS = make_object_id("procedure", "calc_bonus", schema=SAMPLE_SCHEMA)
+GET_EMP_GRADE = make_object_id("function", "get_emp_grade", schema=SAMPLE_SCHEMA)
+TOP_EARNERS = make_object_id("function", "top_earners", schema=SAMPLE_SCHEMA)
+APPLY_RAISE = make_object_id("procedure", "apply_raise", schema=SAMPLE_SCHEMA)
 
 
 def _t(test_id: str, object_id: str, description: str, **inputs) -> TestCase:
