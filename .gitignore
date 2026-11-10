@@ -26,3 +26,6 @@ Thumbs.db
 # local migration output
 backend/work/
 *.log
+
+# Generated migration reports (evidence of a run, not source)
+reports/
