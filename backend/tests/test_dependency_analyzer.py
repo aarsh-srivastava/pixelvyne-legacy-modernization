@@ -46,8 +46,8 @@ def dependency_graph(parsed_objects):
 # Graph structure
 # ---------------------------------------------------------------------
 
-def test_graph_contains_all_14_objects(dependency_graph):
-    assert len(dependency_graph.nodes) == 14
+def test_graph_contains_all_16_objects(dependency_graph):
+    assert len(dependency_graph.nodes) == 16
 
 
 def test_graph_has_unique_nodes(dependency_graph):
@@ -87,8 +87,8 @@ def test_no_duplicate_edges(dependency_graph):
 
 def test_employee_table_depends_on_department_table(dependency_graph):
     assert any(
-        edge.dependent == "EMPLOYEES"
-        and edge.dependency == "DEPARTMENTS"
+        edge.dependent == "table:legacy.employees"
+        and edge.dependency == "table:legacy.departments"
         and edge.dependency_type == ObjectType.TABLE.value
         for edge in dependency_graph.edges
     )
@@ -96,8 +96,8 @@ def test_employee_table_depends_on_department_table(dependency_graph):
 
 def test_payroll_runs_depends_on_employees(dependency_graph):
     assert any(
-        edge.dependent == "PAYROLL_RUNS"
-        and edge.dependency == "EMPLOYEES"
+        edge.dependent == "table:legacy.payroll_runs"
+        and edge.dependency == "table:legacy.employees"
         for edge in dependency_graph.edges
     )
 
@@ -108,8 +108,8 @@ def test_payroll_runs_depends_on_employees(dependency_graph):
 
 def test_org_chart_view_depends_on_employees(dependency_graph):
     assert any(
-        edge.dependent == "ORG_CHART"
-        and edge.dependency == "EMPLOYEES"
+        edge.dependent == "view:legacy.org_chart"
+        and edge.dependency == "table:legacy.employees"
         for edge in dependency_graph.edges
     )
 
@@ -124,8 +124,8 @@ def test_trigger_depends_on_employees(
     )
 
     assert any(
-        edge.dependent == trigger.name
-        and edge.dependency == "EMPLOYEES"
+        edge.dependent == trigger.object_id
+        and edge.dependency == "table:legacy.employees"
         for edge in dependency_graph.edges
     )
 
@@ -136,8 +136,8 @@ def test_trigger_depends_on_employees(
 
 def test_monthly_payroll_depends_on_package(dependency_graph):
     assert any(
-        edge.dependent == "MONTHLY_PAYROLL"
-        and edge.dependency == "PAYROLL_PKG"
+        edge.dependent == "procedure:legacy.monthly_payroll"
+        and edge.dependency == "package:legacy.payroll_pkg"
         and edge.dependency_type == ObjectType.PACKAGE.value
         for edge in dependency_graph.edges
     )
@@ -145,8 +145,8 @@ def test_monthly_payroll_depends_on_package(dependency_graph):
 
 def test_monthly_payroll_depends_on_sequence(dependency_graph):
     assert any(
-        edge.dependent == "MONTHLY_PAYROLL"
-        and edge.dependency == "PAYROLL_RUN_SEQ"
+        edge.dependent == "procedure:legacy.monthly_payroll"
+        and edge.dependency == "sequence:legacy.payroll_run_seq"
         and edge.dependency_type == ObjectType.SEQUENCE.value
         for edge in dependency_graph.edges
     )
@@ -158,8 +158,10 @@ def test_monthly_payroll_depends_on_sequence(dependency_graph):
 
 def test_execution_order_places_dependencies_first(dependency_graph):
     positions = {
-        name: index
-        for index, name in enumerate(dependency_graph.execution_order)
+        object_id: index
+        for index, object_id in enumerate(
+            dependency_graph.execution_order
+        )
     }
 
     for edge in dependency_graph.edges:
@@ -167,7 +169,10 @@ def test_execution_order_places_dependencies_first(dependency_graph):
             edge.dependent in positions
             and edge.dependency in positions
         ):
-            assert positions[edge.dependency] < positions[edge.dependent]
+            assert (
+                positions[edge.dependency]
+                < positions[edge.dependent]
+            )
 
 
 def test_execution_order_contains_all_objects_when_acyclic(

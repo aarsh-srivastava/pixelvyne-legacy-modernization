@@ -11,8 +11,21 @@ import re
 from collections import defaultdict
 from typing import Iterable
 
-from app.contracts.models import IRObject, ObjectType, Param, ParamMode
-
+from app.config import settings
+from app.contracts import (
+    IRObject,
+    ObjectType,
+    Param,
+    ParamMode,
+    check_unique_object_ids,
+    default_schema,
+    make_object_id,
+    make_unresolved_id,
+    normalize_identifier,
+    parse_object_id,
+    TriggerInfo,
+)
+DEFAULT_SCHEMA = default_schema(settings.ORACLE_USER)
 
 # ---------------------------------------------------------------------------
 # 1. Object recognition
@@ -125,8 +138,8 @@ def split_statements(sql: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def normalize_name(name: str) -> str:
-    return name.strip().strip('"').upper()
-
+    """Normalize an Oracle identifier using the shared canonical contract."""
+    return normalize_identifier(name)
 
 def get_object_kind(match: re.Match) -> str:
     return re.sub(r"\s+", " ", match.group("kind").upper())
@@ -326,11 +339,7 @@ def extract_table_references(source: str) -> tuple[list[str], list[str]]:
 
     # Tables modified by DML or Oracle trigger declarations.
     write_patterns = [
-        # Trigger: BEFORE UPDATE OF salary ON employees
-        re.compile(
-            rf"\bUPDATE\s+OF\s+.+?\s+ON\s+({qualified_name})",
-            re.IGNORECASE | re.DOTALL,
-        ),
+
 
         # Normal UPDATE: UPDATE employees SET ...
         re.compile(
@@ -378,7 +387,7 @@ def extract_dependencies(
 ) -> list[str]:
     """Find references to other discovered database objects."""
 
-    source_upper = source.upper()
+    source_normalized = source.lower()
     dependencies = []
 
     for name in known_objects:
@@ -387,11 +396,251 @@ def extract_dependencies(
 
         if re.search(
             rf"(?<![\w$#]){re.escape(name)}(?![\w$#])",
-            source_upper,
+            source_normalized,
         ):
             dependencies.append(name)
 
     return sorted(dependencies)
+
+
+def extract_trigger_metadata(source: str) -> dict | None:
+    """Extract the firing conditions from an Oracle CREATE TRIGGER statement.
+
+    Returns the table reference, timing, DML events, UPDATE OF columns,
+    and row-level setting. Canonical table resolution happens separately.
+    """
+
+    trigger_match = re.search(
+        r"\b(BEFORE|AFTER|INSTEAD\s+OF)\b"
+        r"(?P<events>.*?)"
+        r"\bON\s+"
+        r'(?P<table>"[^"]+"|[\w$#]+)'
+        r'(?:\s*\.\s*("[^"]+"|[\w$#]+))?',
+        source,
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    if not trigger_match:
+        return None
+
+    timing_text = re.sub(
+        r"\s+", " ", trigger_match.group(1).strip().lower()
+    )
+
+    timing = timing_text.replace(" ", "_")
+
+    if timing not in {"before", "after", "instead_of"}:
+        return None
+
+    event_clause = trigger_match.group("events")
+
+    events = list(
+        dict.fromkeys(
+            event.lower()
+            for event in re.findall(
+                r"\b(INSERT|UPDATE|DELETE)\b",
+                event_clause,
+                re.IGNORECASE,
+            )
+        )
+    )
+
+    if not events:
+        return None
+
+    update_columns = []
+
+    update_match = re.search(
+        r"\bUPDATE\s+OF\s+(.+?)"
+        r"(?=\s+OR\s+(?:INSERT|UPDATE|DELETE)\b|$)",
+        event_clause,
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    if update_match:
+        update_columns = [
+            normalize_name(column.strip())
+            for column in update_match.group(1).split(",")
+            if column.strip()
+        ]
+
+
+    table_reference = re.sub(
+        r"\s+", "", trigger_match.group("table")
+    )
+
+    # Include the optional schema qualification.
+    if trigger_match.group(4):
+        table_reference += "." + re.sub(
+            r"\s+", "", trigger_match.group(4)
+        )
+
+
+    return {
+        "table_reference": table_reference,
+        "timing": timing,
+        "events": events,
+        "update_columns": update_columns,
+        "for_each_row": bool(
+            re.search(r"\bFOR\s+EACH\s+ROW\b", source, re.IGNORECASE)
+        ),
+    }
+
+
+def resolve_object_dependencies(objects: list[IRObject]) -> None:
+    """Resolve extracted SQL references to canonical object IDs.
+
+    Mutates each IRObject.depends_on after all objects have been discovered.
+    Unknown references are retained as unresolved IDs.
+    """
+
+    from app.contracts import parse_object_id
+
+    by_id = {obj.object_id: obj for obj in objects}
+
+    tables: dict[str, str] = {}
+    sequences: dict[str, str] = {}
+    packages: dict[str, str] = {}
+    routines: dict[tuple[str | None, str], list[str]] = {}
+
+    # Build indexes from the complete set of discovered objects.
+    for obj in objects:
+        ref = parse_object_id(obj.object_id)
+
+        if obj.type in {ObjectType.TABLE, ObjectType.VIEW}:
+            tables[obj.name] = obj.object_id
+
+        elif obj.type == ObjectType.SEQUENCE:
+            sequences[obj.name] = obj.object_id
+
+        elif obj.type == ObjectType.PACKAGE:
+            packages[obj.name] = obj.object_id
+
+        elif obj.type in {ObjectType.FUNCTION, ObjectType.PROCEDURE}:
+            routines.setdefault((obj.package, obj.name), []).append(
+                obj.object_id
+            )
+
+    def resolve_table(reference: str) -> str:
+        name = reference.split(".")[-1]
+        normalized = normalize_name(name)
+
+        if normalized in tables:
+            return tables[normalized]
+
+        return make_unresolved_id(
+            reference,
+            default_schema=DEFAULT_SCHEMA,
+        )
+
+    def resolve_routine(
+        name: str,
+        package: str | None = None,
+    ) -> str | None:
+        candidates = routines.get((package, normalize_name(name)), [])
+
+        if len(candidates) == 1:
+            return candidates[0]
+
+        return None
+
+    for obj in objects:
+        dependencies: set[str] = set()
+
+        # 1. Table reads and writes, including foreign-key references.
+        for reference in [*obj.reads_tables, *obj.writes_tables]:
+            dependency = resolve_table(reference)
+            if dependency != obj.object_id:
+                dependencies.add(dependency)
+
+        # 2. Sequence NEXTVAL and CURRVAL references.
+        for match in re.finditer(
+            r'\b([\w$#]+(?:\s*\.\s*[\w$#]+)?)\s*\.\s*(?:NEXTVAL|CURRVAL)\b',
+            obj.source_code,
+            re.IGNORECASE,
+        ):
+            reference = re.sub(r"\s+", "", match.group(1))
+            sequence_name = normalize_name(reference.split(".")[-1])
+
+            dependency = sequences.get(sequence_name)
+            if dependency is None:
+                dependency = make_unresolved_id(
+                    reference,
+                    default_schema=DEFAULT_SCHEMA,
+                )
+
+            if dependency != obj.object_id:
+                dependencies.add(dependency)
+
+        # 3. Explicit package-qualified references.
+        for match in re.finditer(
+            r'\b([A-Za-z_$#][\w$#]*)\s*\.\s*([A-Za-z_$#][\w$#]*)\b',
+            obj.source_code,
+            re.IGNORECASE,
+        ):
+            package_name = normalize_name(match.group(1))
+            member_name = normalize_name(match.group(2))
+
+            package_id = packages.get(package_name)
+            if package_id is None:
+                continue
+
+            # A known routine member gets its own ID.
+            # Package constants and state depend on the package itself.
+            member_id = resolve_routine(member_name, package_name)
+            dependency = member_id or package_id
+
+            if dependency != obj.object_id:
+                dependencies.add(dependency)
+
+        # 4. Unqualified routine calls inside the same package.
+        current_package = obj.package
+
+        if current_package:
+            for member_name in routines:
+                package_name, routine_name = member_name
+
+                if package_name != current_package:
+                    continue
+
+                if re.search(
+                    rf'\b{re.escape(routine_name)}\s*\(',
+                    obj.source_code,
+                    re.IGNORECASE,
+                ):
+                    dependency = resolve_routine(
+                        routine_name,
+                        current_package,
+                    )
+                    if dependency and dependency != obj.object_id:
+                        dependencies.add(dependency)
+
+        # 5. Trigger attachment is a dependency, not a body write.
+
+        # 5. Trigger attachment is a dependency, not a body write.
+        if obj.type == ObjectType.TRIGGER:
+            metadata = extract_trigger_metadata(obj.source_code)
+
+            if metadata:
+                dependency = resolve_table(metadata["table_reference"])
+
+                if dependency != obj.object_id:
+                    dependencies.add(dependency)
+
+                # TriggerInfo must reference a discovered table or view.
+                # Missing targets remain unresolved dependencies.
+                if not dependency.startswith("unresolved:"):
+                    obj.trigger = TriggerInfo(
+                        table=dependency,
+                        timing=metadata["timing"],
+                        events=metadata["events"],
+                        update_columns=metadata["update_columns"],
+                        for_each_row=metadata["for_each_row"],
+                    )
+                            # Store the resolved canonical dependencies on the IR object.
+        obj.depends_on = sorted(dependencies)
+
+
 ORACLE_FEATURE_PATTERNS = {
     "NVL": r"\bNVL\s*\(",
     "DECODE": r"\bDECODE\s*\(",
@@ -421,6 +670,75 @@ def extract_oracle_features(source: str) -> list[str]:
             features.append(feature)
 
     return sorted(features)
+
+def extract_package_members(
+    source: str,
+) -> list[dict]:
+    """Extract implemented functions and procedures from a package body.
+
+    Each returned member contains its kind, name and complete source block.
+    Package specifications are intentionally not used: implementations in
+    the body are the source of truth for member IR objects.
+    """
+        # The merged package source contains both the specification
+    # and body. Extract members only from the package body.
+    body_match = re.search(
+        r"\bCREATE\s+(?:OR\s+REPLACE\s+)?"
+        r"(?:(?:EDITIONABLE|NONEDITIONABLE)\s+)?"
+        r"PACKAGE\s+BODY\b",
+        source,
+        re.IGNORECASE,
+    )
+
+    if not body_match:
+        return []
+
+    source = source[body_match.start():]
+
+    members = []
+
+    # Match routine declarations at the beginning of a package-body line.
+    member_pattern = re.compile(
+        r"""
+        ^[ \t]*
+        (?P<kind>FUNCTION|PROCEDURE)
+        \s+
+        (?P<name>"[^"]+"|[\w$#]+)
+        \b
+        """,
+        re.IGNORECASE | re.MULTILINE | re.VERBOSE,
+    )
+
+    for match in member_pattern.finditer(source):
+        kind = match.group("kind").upper()
+        name = normalize_name(match.group("name"))
+
+        # Find the end of this routine implementation.
+        end_pattern = re.compile(
+            rf"^\s*END\s+{re.escape(match.group('name'))}\s*;",
+            re.IGNORECASE | re.MULTILINE,
+        )
+
+        end_match = end_pattern.search(source, match.end())
+
+        if not end_match:
+            continue
+
+        member_source = source[match.start():end_match.end()]
+
+        # Only accept actual implementations containing IS or AS.
+        if not re.search(r"\b(?:IS|AS)\b", member_source, re.IGNORECASE):
+            continue
+
+        members.append(
+            {
+                "kind": kind,
+                "name": name,
+                "source": member_source,
+            }
+        )
+
+    return members
 
 # ---------------------------------------------------------------------------
 # 8. Main parser
@@ -508,7 +826,11 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
 
         objects.append(
             IRObject(
-                object_id=f"{object_type.value.lower()}:{name.lower()}",
+                object_id=make_object_id(
+                    object_type.value,
+                    name,
+                    schema=DEFAULT_SCHEMA,
+                ),
                 name=name,
                 type=object_type,
                 package=None,
@@ -523,8 +845,53 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
                 oracle_features=extract_oracle_features(source),
             )
         )
+	        # Extract implemented functions and procedures from package bodies.
+        if kind in {"PACKAGE", "PACKAGE BODY"}:
+            for member in extract_package_members(source):
+                member_kind = member["kind"]
+                member_name = member["name"]
+                member_source = member["source"]
 
-    return sorted(objects, key=lambda obj: (obj.type.value, obj.name))
+                member_type = TYPE_MAP[member_kind]
+                member_reads, member_writes = extract_table_references(
+                    member_source
+                )
+
+                objects.append(
+                    IRObject(
+                        object_id=make_object_id(
+                            member_type.value,
+                            member_name,
+                            schema=DEFAULT_SCHEMA,
+                            package=name,
+                        ),
+                        name=member_name,
+                        type=member_type,
+                        package=name,
+                        params=extract_params(member_source, member_kind),
+                        return_type=extract_return_type(
+                            member_source, member_kind
+                        ),
+                        reads_tables=member_reads,
+                        writes_tables=member_writes,
+                        depends_on=[],
+                        business_rules=[],
+                        source_code=member_source,
+                        source_file=item["filename"],
+                        oracle_features=extract_oracle_features(
+                            member_source
+                        ),
+                    )
+                )
+
+    check_unique_object_ids(
+        (obj.object_id, f"{obj.name} in {obj.source_file}")
+        for obj in objects
+    )
+
+    resolve_object_dependencies(objects)
+
+    return sorted(objects, key=lambda obj: (obj.type.value, obj.object_id))
 
 
 def parse_file(filename: str, content: str) -> list[IRObject]:
