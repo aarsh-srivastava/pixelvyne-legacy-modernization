@@ -16,9 +16,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-CONTRACT_VERSION = "0.1"
+from app.contracts.object_ids import normalize_identifier, parse_object_id
+
+CONTRACT_VERSION = "0.2"   # 0.2: canonical object_ids (object_ids.py), TriggerInfo
 
 
 # ---------------------------------------------------------------- enums
@@ -70,10 +72,49 @@ class Param(BaseModel):
     default_expr: str | None = None    # e.g. "SYSDATE"
 
 
+class TriggerInfo(BaseModel):
+    """What makes a trigger fire. What it changes is separate: IRObject.writes_tables.
+
+    For  AFTER UPDATE OF base_salary ON employees FOR EACH ROW ... INSERT INTO salary_audit
+        table="table:legacy.employees", timing="after", events=["update"],
+        update_columns=["base_salary"], for_each_row=True
+    and writes_tables=["salary_audit"]. The fired-on table is also in depends_on.
+
+    If the fired-on table is not in the upload, the trigger gets no TriggerInfo
+    (trigger=None); the reference stays in depends_on as "unresolved:...", which the
+    planner turns into a missing_dependency blocker.
+    """
+
+    table: str                         # canonical table or view object_id, never unresolved
+    timing: Literal["before", "after", "instead_of"]
+    events: list[Literal["insert", "update", "delete"]]
+    update_columns: list[str] = Field(default_factory=list)   # UPDATE OF ..., normalized
+    for_each_row: bool = False         # False = statement-level trigger
+
+    @field_validator("table")
+    @classmethod
+    def _table_is_canonical(cls, value: str) -> str:
+        if parse_object_id(value).kind not in {"table", "view"}:
+            raise ValueError(f"Trigger target must be a table or view object_id, got {value!r}")
+        return value
+
+    @field_validator("events")
+    @classmethod
+    def _events_not_empty(cls, value: list[str]) -> list[str]:
+        if not value or len(set(value)) != len(value):
+            raise ValueError("events must list each triggering DML event once")
+        return value
+
+    @field_validator("update_columns")
+    @classmethod
+    def _columns_normalized(cls, value: list[str]) -> list[str]:
+        return [normalize_identifier(c) for c in value]
+
+
 class IRObject(BaseModel):
     """One source object, as understood by the analysis step."""
 
-    object_id: str                     # stable id, e.g. "procedure:calc_bonus"
+    object_id: str                     # canonical, see object_ids.py: "procedure:legacy.calc_bonus"
     name: str                          # lower-case, unqualified
     type: ObjectType
     package: str | None = None         # set for members of a package
@@ -81,11 +122,12 @@ class IRObject(BaseModel):
     return_type: str | None = None     # functions only, Oracle type
     reads_tables: list[str] = Field(default_factory=list)
     writes_tables: list[str] = Field(default_factory=list)
-    depends_on: list[str] = Field(default_factory=list)   # other object_ids
+    depends_on: list[str] = Field(default_factory=list)   # canonical object_ids, incl. "unresolved:..."
     business_rules: list[str] = Field(default_factory=list)
     source_code: str
     source_file: str | None = None
     oracle_features: list[str] = Field(default_factory=list)  # e.g. ["DECODE", "ROWNUM"]
+    trigger: TriggerInfo | None = None # triggers only
 
 
 class ConversionResult(BaseModel):
