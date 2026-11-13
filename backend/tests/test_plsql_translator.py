@@ -450,3 +450,63 @@ def test_literals_survive_in_postgresql(scratch_db, deployer_conn, runner_conn):
     expected = "|".join(v[1:-1].replace("''", "'") for v in values)
     assert runner_conn.execute("SELECT lit_check()").fetchone()[0] == expected
     runner_conn.rollback()
+
+
+# --- review fix 2: parameter defaults follow PostgreSQL's rules ---------------------------
+
+DEFAULT_CASES = {
+    # name: (Oracle parameter list, kind, defaults dropped, call that omits what may be omitted)
+    "fa": ("(a IN NUMBER DEFAULT 1, b IN NUMBER)", "function", ["a"], "SELECT fa(1, 2)"),
+    "fb": ("(a IN NUMBER, b IN NUMBER DEFAULT 1, c IN NUMBER := 2)", "function", [], "SELECT fb(10)"),
+    "fe": ("(a IN NUMBER DEFAULT 1, b IN NUMBER DEFAULT 2, c IN NUMBER)", "function", ["a", "b"],
+           "SELECT fe(1, 2, 3)"),
+    "ff": ("(a IN NUMBER DEFAULT 1, b IN NUMBER, c IN NUMBER DEFAULT 3)", "function", ["a"], "SELECT ff(1, 2)"),
+    "pc": ("(a IN NUMBER DEFAULT 1, b OUT NUMBER)", "procedure", ["a"], "CALL pc(1, NULL)"),
+    "pd": ("(a IN NUMBER, b IN NUMBER DEFAULT 1, c IN OUT NUMBER)", "procedure", ["b"], "CALL pd(1, 2, 3)"),
+    "pg": ("(a IN NUMBER, b IN NUMBER DEFAULT 1, c OUT NUMBER, d IN NUMBER DEFAULT 4)", "procedure", ["b"],
+           "CALL pg(1, 2, NULL)"),
+}
+
+
+def _default_source(name):
+    params, kind, _, _ = DEFAULT_CASES[name]
+    if kind == "function":
+        return f"CREATE FUNCTION {name} {params} RETURN NUMBER IS BEGIN RETURN a; END;"
+    out = "c" if name in ("pd", "pg") else "b"
+    return f"CREATE PROCEDURE {name} {params} IS BEGIN {out} := a; END;"
+
+
+@pytest.mark.parametrize("name", sorted(DEFAULT_CASES))
+def test_only_the_defaults_postgresql_rejects_are_dropped(name):
+    _, kind, dropped, _ = DEFAULT_CASES[name]
+    result = translate_plsql(_default_source(name), kind=kind, name=name)
+    assert result.successful, result.unsupported
+    header = result.code.splitlines()[0]
+    for param in "abcd":
+        if f" {param} " not in header and f"({param} " not in header:
+            continue
+        has_default = f"{param} numeric DEFAULT" in header or f"{param} INOUT numeric DEFAULT" in header
+        oracle_has_default = f"{param} IN NUMBER DEFAULT" in DEFAULT_CASES[name][0] or \
+            f"{param} IN NUMBER :=" in DEFAULT_CASES[name][0]
+        assert has_default == (oracle_has_default and param not in dropped), (param, header)
+    assert result.needs_review == bool(dropped)
+    if dropped:
+        assert f"parameter default dropped ({', '.join(dropped)})" in result.review_reasons
+
+
+def test_default_on_an_out_parameter_is_reported():
+    result = translate_plsql("CREATE PROCEDURE p (a IN OUT NUMBER DEFAULT 1) IS BEGIN NULL; END;",
+                             kind="procedure", name="p")
+    assert "default on IN OUT parameter a" in result.unsupported[0]
+
+
+@pytest.mark.parametrize("name", sorted(DEFAULT_CASES))
+def test_postgresql_accepts_the_signature_and_the_kept_defaults_work(scratch_db, deployer_conn, runner_conn, name):
+    from app.migration.postgres_deployer import DeployTarget
+
+    _, kind, _, call = DEFAULT_CASES[name]
+    result = translate_plsql(_default_source(name), kind=kind, name=name)
+    deployed = PostgresDeployer(deployer_conn, database=scratch_db).deploy(result.code, DeployTarget(kind, name))
+    assert deployed.ok, deployed.error
+    assert runner_conn.execute(call).fetchone()[0] is not None
+    runner_conn.rollback()

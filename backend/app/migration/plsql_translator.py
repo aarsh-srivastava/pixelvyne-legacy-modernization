@@ -764,6 +764,28 @@ def _dollar_tag(body: str) -> str:
     raise _Unsupported("no free $-quote tag")
 
 
+def _legal_defaults(params: list[tuple[str, str, str, str | None]]) -> tuple[list, list[str]]:
+    """Drop exactly the parameter defaults PostgreSQL rejects; keep the rest.
+
+    PostgreSQL: "input parameters after one with a default value must also have
+    defaults", and "procedure OUT parameters cannot appear after one with a default
+    value". Walking from the last parameter back, a default survives only if nothing
+    after it is a required input (IN or INOUT without a default) or an OUT parameter.
+    Parameters are never reordered: existing callers depend on their positions.
+    """
+    kept: list = []
+    dropped: list[str] = []
+    blocked = False
+    for name, mode, pg_type, default in reversed(params):
+        if default is not None and blocked:
+            dropped.append(name)
+            default = None
+        if mode.strip() == "OUT" or default is None:
+            blocked = True
+        kept.append((name, mode, pg_type, default))
+    return list(reversed(kept)), list(reversed(dropped))
+
+
 def _routine(tr: _Translator, kind: str, name: str) -> PlsqlResult:
     if tr.word() == "CREATE":
         tr.take()
@@ -782,10 +804,8 @@ def _routine(tr: _Translator, kind: str, name: str) -> PlsqlResult:
     if parts[-1] != name:
         raise _Unsupported(f"source defines {parts[-1]!r}, expected {name!r}")
 
-    params: list[str] = []
+    params: list[tuple[str, str, str, str | None]] = []
     text_params: list[str] = []
-    out_seen_after_default = False
-    defaults_seen = False
     if tr.is_op("("):
         tr.take()
         while True:
@@ -806,9 +826,8 @@ def _routine(tr: _Translator, kind: str, name: str) -> PlsqlResult:
             tr.remember(pname, category)
             if kind == "function" and mode != "IN":
                 raise _Unsupported("functions with OUT parameters have no rule yet")
-            if mode == "OUT" and defaults_seen:
-                out_seen_after_default = True
-            defaults_seen = defaults_seen or default is not None
+            if default is not None and mode != "IN":
+                raise _Unsupported(f"default on {mode} parameter {pname}")  # not valid Oracle either
             if category == "text" and mode in ("IN", "IN OUT"):
                 text_params.append(pname)
             pg_mode = {"IN": "", "OUT": "OUT ", "IN OUT": "INOUT "}[mode]
@@ -819,14 +838,13 @@ def _routine(tr: _Translator, kind: str, name: str) -> PlsqlResult:
             tr.expect_op(")")
             break
 
-    if out_seen_after_default:
-        dropped = [p[0] for p in params if p[3] is not None]
+    params, dropped = _legal_defaults(params)
+    if dropped:
         tr.warnings.append(
-            f"PostgreSQL can't keep a default before an OUT parameter; dropped the default of {', '.join(dropped)}. "
-            "Callers must pass it."
+            "PostgreSQL needs every input parameter after a default to have one too, and allows no OUT "
+            f"parameter after a default; dropped the default of {', '.join(dropped)}. Callers must pass it."
         )
         tr.review.append(f"parameter default dropped ({', '.join(dropped)})")
-        params = [(n, m, t, None) for n, m, t, _ in params]
 
     returns = ""
     if kind == "function":
