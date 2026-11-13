@@ -12,6 +12,7 @@ Rules on top of SQLGlot (Stage 1 design, section 5 and decisions D2/D3):
       in days: ``d1 - d2`` becomes ``EXTRACT(EPOCH FROM (d1 - d2)) / 86400`` (fractional,
       like Oracle) and ``d +/- n`` becomes ``d +/- (n) * INTERVAL '1 day'``. Needs to know
       which operands are dates (``date_names``, date functions, GREATEST/CASE of dates).
+* R4  Division is exact decimal, as with Oracle NUMBER: ``CAST(a AS DECIMAL) / b``.
 * R6  ``TRUNC(d)`` / ``TRUNC(d, 'MM')`` on dates: ``DATE_TRUNC('day' | 'month', d)``.
 * R7  ``ADD_MONTHS(d, n)`` keeps month-ends month-ends, like Oracle.
 * R8  ``seq.NEXTVAL`` / ``seq.CURRVAL``: ``NEXTVAL('seq')`` / ``CURRVAL('seq')``.
@@ -292,6 +293,15 @@ def _rewrite(node: exp.Expression, ctx: _Context, problems: list[str]) -> exp.Ex
             f"+ ({d} - DATE_TRUNC('day', {d})) "
             f"ELSE {d} + {months} * INTERVAL '1 month' END"
         )
+
+    if isinstance(node, exp.Div) and not node.args.get("typed"):
+        # Oracle NUMBER division is exact decimal. SQLGlot would cast to DOUBLE PRECISION
+        # (float drift, and ROUND(double precision, 2) doesn't exist in PostgreSQL), and
+        # leaving it alone would make 1 / 3 an integer division (0) in PostgreSQL.
+        left = node.this
+        if not (isinstance(left, exp.Cast) and left.to.is_type("decimal")):
+            left = exp.Cast(this=left, to=exp.DataType.build("DECIMAL"))
+        return exp.Div(this=left, expression=node.expression, typed=True)
 
     if isinstance(node, (exp.Sub, exp.Add)) and not isinstance(node, exp.DPipe):
         left, right = node.this, node.expression

@@ -293,3 +293,23 @@ def test_date_difference_matches_oracle(pg, oracle_expr, oracle_answer):
 def test_date_plus_fractional_days_matches_oracle(pg):
     assert run(pg, f"SELECT {d('2026-11-13 00:00:00')} + 1.5 FROM dual") == datetime(2026, 11, 14, 12, 0)
     assert run(pg, f"SELECT {d('2026-11-13 00:00:00')} - 1 FROM dual") == datetime(2026, 11, 12, 0, 0)
+
+
+# --- R4: division is exact decimal -------------------------------------------------------
+
+def test_division_is_decimal_not_float():
+    assert ok("SELECT a / 100 FROM t") == "SELECT CAST(a AS DECIMAL) / 100 FROM t"
+    assert translate_expression("ROUND(v_old * (1 + p_pct / 100), 2)").target_sql == (
+        "ROUND(v_old * (1 + CAST(p_pct AS DECIMAL) / 100), 2)"
+    )
+    assert "DOUBLE" not in ok("SELECT x / y / z FROM t")
+
+
+@pytest.mark.parametrize("oracle_expr, oracle_answer", [
+    ("1 / 3", Decimal("0.3333333333333333")),                # not integer division
+    ("ROUND(85000.50 * (1 + 7 / 100), 2)", Decimal("90950.54")),  # ar-01: float would drift
+    ("ROUND(10 / 4, 1)", Decimal("2.5")),
+])
+def test_division_matches_oracle(pg, oracle_expr, oracle_answer):
+    value = run(pg, f"SELECT {oracle_expr} FROM dual")
+    assert value == oracle_answer if "ROUND" in oracle_expr else round(value, 16) == oracle_answer
