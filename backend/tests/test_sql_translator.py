@@ -264,3 +264,32 @@ def test_concatenation_matches_oracle(pg, oracle_sql, oracle_answer):
 def test_casts_match_oracle(pg):
     assert run(pg, "SELECT CAST(2.5 AS INTEGER) FROM dual") == Decimal("3")
     assert run(pg, f"SELECT CAST({d('2026-11-13 15:45:10')} AS DATE) FROM dual") == datetime(2026, 11, 13, 15, 45, 10)
+
+
+# --- R5: date arithmetic in days ------------------------------------------------------
+
+def test_date_minus_date_and_date_plus_days():
+    ctx = dict(date_names={"v_month_end", "v_month_start", "hire_date"})
+    assert translate_expression("v_month_end - v_month_start + 1", **ctx).target_sql == (
+        "EXTRACT(EPOCH FROM (v_month_end - v_month_start)) / 86400 + 1"
+    )
+    assert translate_expression("v_month_end - GREATEST(TRUNC(e.hire_date), v_month_start)", **ctx).target_sql == (
+        "EXTRACT(EPOCH FROM (v_month_end - GREATEST(DATE_TRUNC('DAY', e.hire_date), v_month_start))) / 86400"
+    )
+    assert translate_expression("hire_date + 7", **ctx).target_sql == "hire_date + (7) * INTERVAL '1 DAY'"
+    assert translate_expression("7 + hire_date", **ctx).target_sql == "hire_date + (7) * INTERVAL '1 DAY'"
+    assert translate_expression("base_salary - 1", **ctx).target_sql == "base_salary - 1"
+
+
+@pytest.mark.parametrize("oracle_expr, oracle_answer", [
+    (f"{d('2026-11-30 00:00:00')} - {d('2026-11-01 00:00:00')} + 1", Decimal("30")),   # days in November
+    (f"{d('2026-11-13 12:00:00')} - {d('2026-11-13 00:00:00')}", Decimal("0.5")),      # fraction of a day
+    (f"{d('2026-03-29 00:00:00')} - {d('2026-03-28 00:00:00')}", Decimal("1")),
+])
+def test_date_difference_matches_oracle(pg, oracle_expr, oracle_answer):
+    assert run(pg, f"SELECT {oracle_expr} FROM dual") == oracle_answer
+
+
+def test_date_plus_fractional_days_matches_oracle(pg):
+    assert run(pg, f"SELECT {d('2026-11-13 00:00:00')} + 1.5 FROM dual") == datetime(2026, 11, 14, 12, 0)
+    assert run(pg, f"SELECT {d('2026-11-13 00:00:00')} - 1 FROM dual") == datetime(2026, 11, 12, 0, 0)

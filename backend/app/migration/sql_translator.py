@@ -8,7 +8,10 @@ Rules on top of SQLGlot (Stage 1 design, section 5 and decisions D2/D3):
 
 * R1  ``''`` is NULL in Oracle: an empty string literal becomes ``NULL``.
 * R3  ``a || b`` ignores NULLs in Oracle: ``NULLIF(CONCAT(a, b), '')``.
-* R5  ``CAST(x AS DATE)`` keeps the time in Oracle: ``TIMESTAMP(0)``.
+* R5  ``CAST(x AS DATE)`` keeps the time in Oracle: ``TIMESTAMP(0)``. Date arithmetic is
+      in days: ``d1 - d2`` becomes ``EXTRACT(EPOCH FROM (d1 - d2)) / 86400`` (fractional,
+      like Oracle) and ``d +/- n`` becomes ``d +/- (n) * INTERVAL '1 day'``. Needs to know
+      which operands are dates (``date_names``, date functions, GREATEST/CASE of dates).
 * R6  ``TRUNC(d)`` / ``TRUNC(d, 'MM')`` on dates: ``DATE_TRUNC('day' | 'month', d)``.
 * R7  ``ADD_MONTHS(d, n)`` keeps month-ends month-ends, like Oracle.
 * R8  ``seq.NEXTVAL`` / ``seq.CURRVAL``: ``NEXTVAL('seq')`` / ``CURRVAL('seq')``.
@@ -203,7 +206,15 @@ def _apply_top_n(tree: exp.Expression) -> None:
 
 # --- the other rules (applied children first) ------------------------------------------
 
+def _has_interval(node: exp.Expression) -> bool:
+    return isinstance(node, exp.Interval) or (
+        isinstance(node, exp.Mul) and any(isinstance(side, exp.Interval) for side in (node.this, node.expression))
+    )
+
+
 def _is_date(node: exp.Expression, ctx: _Context) -> bool:
+    if isinstance(node, exp.Paren):
+        return _is_date(node.this, ctx)
     if isinstance(node, (exp.CurrentTimestamp, exp.AddMonths, exp.LastDay, exp.DateTrunc)):
         return True
     if isinstance(node, exp.Cast):
@@ -212,15 +223,29 @@ def _is_date(node: exp.Expression, ctx: _Context) -> bool:
         return node.name.lower() in ctx.date_names or node.sql(dialect="oracle").lower() in ctx.date_names
     if isinstance(node, exp.Anonymous) and node.name.lower() == "date_trunc":
         return True
+    if isinstance(node, (exp.Greatest, exp.Least, exp.Coalesce)):
+        return any(_is_date(arg, ctx) for arg in [node.this, *node.expressions] if arg is not None)
+    if isinstance(node, exp.Case):
+        branches = [i.args.get("true") for i in node.args.get("ifs", [])] + [node.args.get("default")]
+        return any(_is_date(b, ctx) for b in branches if b is not None)
+    if isinstance(node, (exp.Add, exp.Sub)):
+        # date +/- n days, as rewritten by R5 (date + n * INTERVAL '1 day')
+        return (_is_date(node.this, ctx) and _has_interval(node.expression)) or (
+            isinstance(node, exp.Add) and _has_interval(node.this) and _is_date(node.expression, ctx)
+        )
     return False
 
 
 def _is_number(node: exp.Expression, ctx: _Context) -> bool:
+    if isinstance(node, exp.Paren):
+        return _is_number(node.this, ctx)
     if isinstance(node, exp.Literal) and not node.is_string:
         return True
     if isinstance(node, exp.Column):
         return node.name.lower() in ctx.number_names or node.sql(dialect="oracle").lower() in ctx.number_names
-    return isinstance(node, (exp.Add, exp.Sub, exp.Mul, exp.Div, exp.Round, exp.Trunc))
+    if isinstance(node, (exp.Add, exp.Sub)) and (_has_interval(node.this) or _has_interval(node.expression)):
+        return False
+    return isinstance(node, (exp.Add, exp.Sub, exp.Mul, exp.Div, exp.Round, exp.Trunc, exp.Extract, exp.Neg))
 
 
 def _rewrite(node: exp.Expression, ctx: _Context, problems: list[str]) -> exp.Expression | None:
@@ -267,6 +292,18 @@ def _rewrite(node: exp.Expression, ctx: _Context, problems: list[str]) -> exp.Ex
             f"+ ({d} - DATE_TRUNC('day', {d})) "
             f"ELSE {d} + {months} * INTERVAL '1 month' END"
         )
+
+    if isinstance(node, (exp.Sub, exp.Add)) and not isinstance(node, exp.DPipe):
+        left, right = node.this, node.expression
+        left_date, right_date = _is_date(left, ctx), _is_date(right, ctx)
+        if isinstance(node, exp.Sub) and left_date and right_date:
+            # Oracle: date - date = days, with a fraction for the time of day.
+            return _pg(f"EXTRACT(EPOCH FROM ({_sql(left)} - {_sql(right)})) / 86400")
+        if left_date and not right_date and not _has_interval(right):
+            sign = "-" if isinstance(node, exp.Sub) else "+"
+            return _pg(f"{_sql(left)} {sign} ({_sql(right)}) * INTERVAL '1 day'")
+        if isinstance(node, exp.Add) and right_date and not left_date and not _has_interval(left):
+            return _pg(f"{_sql(right)} + ({_sql(left)}) * INTERVAL '1 day'")
 
     if isinstance(node, exp.LastDay):
         d = _sql(node.this)
