@@ -260,7 +260,15 @@ def test_unsupported_routines_are_reported(source, kind, reason):
 # --- the proof: translated code reproduces Oracle's answers -------------------------------
 
 psycopg = pytest.importorskip("psycopg")
-from tests.target_pg import DEPLOYER_PASSWORD, RUNNER_PASSWORD, _admin_connect, connect_as  # noqa: E402
+from tests.target_pg import (  # noqa: E402,F401  (fixtures)
+    DEPLOYER_PASSWORD,
+    RUNNER_PASSWORD,
+    _admin_connect,
+    connect_as,
+    deployer_conn,
+    runner_conn,
+    scratch_db,
+)
 
 WATCH = ["employees", "salary_audit", "payroll_runs"]
 
@@ -391,3 +399,54 @@ def test_tr_trigger_matches_oracle(runner, new_salary, change_type):  # tr-01, t
     emp_id, old, new, kind, changed_on = rows[0]
     assert (int(emp_id), old, new, kind) == (106, Decimal("64000.00"), Decimal(new_salary), change_type)
     assert changed_on.hour == changed_on.minute == changed_on.second == 0  # TRUNC(SYSDATE)
+
+
+# --- review fix 1: literals are data, comments are not ---------------------------------
+
+LITERALS = {
+    "multiple spaces": "'Hello    world'",
+    "tab": "'a\tb'",
+    "newline": "'line1\nline2'",
+    "escaped quote": "'O''Brien  x'",
+    "only spaces": "'   '",
+    "comment markers": "'-- not a comment /* nor this */'",
+}
+
+
+@pytest.mark.parametrize("label", sorted(LITERALS))
+def test_string_literals_are_copied_exactly(label):
+    literal = LITERALS[label]
+    code = tr(f"CREATE FUNCTION f RETURN VARCHAR2 IS\n  v VARCHAR2(100) := {literal};\n"
+              f"BEGIN\n  v := v ||   {literal};\n  RETURN {literal};\nEND;", kind="function", name="f")
+    assert code.count(literal) == 3, code
+
+
+def test_comments_are_dropped_and_cannot_swallow_code():
+    code = tr("CREATE FUNCTION f RETURN NUMBER IS v NUMBER;\nBEGIN\n"
+              "  v := 1 -- a comment with ; and a quote '\n       + 2;  /* block\n comment */\n"
+              "  RETURN v;\nEND;", kind="function", name="f")
+    assert "v := 1 + 2;" in code
+    assert "comment" not in code
+
+
+def test_comments_in_into_targets_and_trigger_events_are_dropped():
+    select = tr("CREATE PROCEDURE p IS a NUMBER; b NUMBER; BEGIN\n"
+                "  SELECT 1, 2 INTO a, -- first\n b FROM dual;\nEND;")
+    assert "INTO STRICT a, b;" in select
+    trigger = tr("CREATE TRIGGER t AFTER INSERT /* new rows */ OR DELETE ON employees BEGIN NULL; END;",
+                 kind="trigger", name="t")
+    assert "AFTER insert or delete ON employees" in trigger
+
+
+def test_literals_survive_in_postgresql(scratch_db, deployer_conn, runner_conn):
+    """Deploy a translated function and read the literals back from PostgreSQL."""
+    values = [LITERALS[k] for k in sorted(LITERALS)]
+    body = " || '|' || ".join(values)
+    code = tr(f"CREATE FUNCTION lit_check RETURN VARCHAR2 IS BEGIN RETURN {body}; END;",
+              kind="function", name="lit_check")
+    from app.migration.postgres_deployer import DeployTarget
+    result = PostgresDeployer(deployer_conn, database=scratch_db).deploy(code, DeployTarget("function", "lit_check"))
+    assert result.ok, result.error
+    expected = "|".join(v[1:-1].replace("''", "'") for v in values)
+    assert runner_conn.execute("SELECT lit_check()").fetchone()[0] == expected
+    runner_conn.rollback()

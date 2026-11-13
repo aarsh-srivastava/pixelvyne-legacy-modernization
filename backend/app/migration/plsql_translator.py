@@ -360,8 +360,42 @@ class _Translator:
             constants=self.ctx.constants,
         )
 
-    def _prepare(self, a: int, b: int) -> str:
+    def _clean(self, a: int, b: int) -> tuple[str, str]:
+        """source[a:b] ready for SQLGlot, and its masked twin (same length).
+
+        Comments are removed and whitespace runs outside literals become one space, so
+        a line comment can't swallow the rest of a statement once lines are joined.
+        String literals and quoted identifiers are copied exactly: spaces, tabs,
+        newlines and '' escapes inside them are data.
+        """
         text, masked = self.source[a:b], self.masked[a:b]
+        out: list[str] = []
+        out_masked: list[str] = []
+        i, n = 0, len(text)
+        while i < n:
+            ch = masked[i]
+            if ch in "'\"":
+                # In the masked text a literal's inside is all 'x' (escapes included), so the
+                # next quote of the same kind closes it.
+                j = masked.find(ch, i + 1)
+                j = n - 1 if j == -1 else j
+                out.append(text[i:j + 1])
+                out_masked.append(masked[i:j + 1])
+                i = j + 1
+            elif ch.isspace():  # real whitespace, or a comment (masked to spaces)
+                while i < n and masked[i].isspace():
+                    i += 1
+                if out and out[-1] != " ":
+                    out.append(" ")
+                    out_masked.append(" ")
+            else:
+                out.append(text[i])
+                out_masked.append(ch)
+                i += 1
+        return "".join(out).strip(), "".join(out_masked).strip()
+
+    def _prepare(self, a: int, b: int) -> str:
+        text, masked = self._clean(a, b)
         if self.trigger:
             ops = {"INSERTING": "(TG_OP = 'INSERT')", "UPDATING": "(TG_OP = 'UPDATE')",
                    "DELETING": "(TG_OP = 'DELETE')"}
@@ -373,7 +407,7 @@ class _Translator:
             raise _Unsupported("SQLCODE has no rule yet (PostgreSQL's SQLSTATE is text)")
         if re.search(r"\bSQL\s*%\s*(ROWCOUNT|FOUND|NOTFOUND|ISOPEN)\b", masked, re.I):
             raise _Unsupported("SQL%ROWCOUNT / SQL%FOUND have no rule yet")
-        return " ".join(text.split())
+        return text
 
     def expr(self, a: int, b: int) -> str:
         text = self._prepare(a, b)
@@ -641,7 +675,7 @@ class _Translator:
             raise _Unsupported("BULK COLLECT has no rule yet")
         end = next((k for k in range(into + 1, len(toks))
                     if toks[k].kind == "word" and toks[k].text in ("FROM", "WHERE")), len(toks))
-        targets = " ".join(self.source[toks[into + 1].start:toks[end - 1].end].split()).lower()
+        targets = self._clean(toks[into + 1].start, toks[end - 1].end)[0].lower()
         before = self._prepare(a, toks[into].start)
         after = self._prepare(toks[end].start, b) if end < len(toks) else ""
         translated = self.sql(f"{before} {after}".strip())
@@ -863,7 +897,7 @@ def _trigger(tr: _Translator, name: str) -> PlsqlResult:
     if timing == "INSTEAD":
         raise _Unsupported("INSTEAD OF triggers have no rule yet")
     a, b = tr.span_until({"ON"})
-    events_text = " ".join(tr.source[a:b].split())
+    events_text = tr._clean(a, b)[0]
     if not _EVENTS.fullmatch(events_text):
         raise _Unsupported(f"trigger events {events_text!r} have no rule")
     events = {w.upper() for w in re.findall(r"\b(INSERT|UPDATE|DELETE)\b", events_text, re.I)}
