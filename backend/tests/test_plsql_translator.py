@@ -510,3 +510,88 @@ def test_postgresql_accepts_the_signature_and_the_kept_defaults_work(scratch_db,
     assert deployed.ok, deployed.error
     assert runner_conn.execute(call).fetchone()[0] is not None
     runner_conn.rollback()
+
+
+# --- review fix 3: SELECT INTO edge cases, run in PostgreSQL ------------------------------
+# Sandbox rows (target_pg.py): 101 'Asha Verma' 120000, 102 'Rohan Mehta' 85000.50.
+
+SELECT_INTO_CASES = {
+    "nested_subqueries": (
+        "SELECT (SELECT MAX(base_salary) FROM employees), full_name INTO o1, o2 FROM employees "
+        "WHERE emp_id = (SELECT MIN(emp_id) FROM employees)",
+        "employees), full_name INTO STRICT o1, o2 FROM employees WHERE emp_id = (SELECT MIN",
+        (Decimal("120000"), "Asha Verma", None),
+    ),
+    "literal_with_from_and_into": (
+        "SELECT 'FROM x INTO y ' || full_name INTO o2 FROM employees WHERE emp_id = 101",
+        "INTO STRICT o2 FROM employees",
+        (None, "FROM x INTO y Asha Verma", None),
+    ),
+    "escaped_apostrophes": (
+        "SELECT 'O''Brien  FROM  ' || full_name, 'it''s' INTO o2, o3 FROM employees WHERE emp_id = 102",
+        "INTO STRICT o2, o3 FROM employees",
+        (None, "O'Brien  FROM  Rohan Mehta", "it's"),
+    ),
+    "multiple_expressions": (
+        "SELECT base_salary * 2, full_name, CASE WHEN base_salary > 100000 THEN 'HIGH' ELSE 'LOW' END "
+        "INTO o1, o2, o3 FROM employees WHERE emp_id = 102",
+        "INTO STRICT o1, o2, o3 FROM employees",
+        (Decimal("170001.00"), "Rohan Mehta", "LOW"),
+    ),
+    "subquery_in_from_and_where": (
+        "SELECT COUNT(*) INTO o1 FROM (SELECT emp_id FROM employees "
+        "WHERE base_salary > (SELECT AVG(base_salary) FROM employees))",
+        "INTO STRICT o1 FROM (SELECT",
+        (Decimal("1"), None, None),
+    ),
+    "no_from_after_dual": (
+        "SELECT 1 + 1, 'from' INTO o1, o2 FROM dual",
+        "SELECT 1 + 1, 'from' INTO STRICT o1, o2;",
+        (Decimal("2"), "from", None),
+    ),
+}
+
+
+def _select_into_proc(name, statement):
+    return (f"CREATE PROCEDURE {name} (o1 OUT NUMBER, o2 OUT VARCHAR2, o3 OUT VARCHAR2) IS\n"
+            f"BEGIN\n  {statement};\nEND;")
+
+
+@pytest.mark.parametrize("case", sorted(SELECT_INTO_CASES))
+def test_select_into_translation(case):
+    statement, fragment, _ = SELECT_INTO_CASES[case]
+    code = tr(_select_into_proc(f"si_{case}", statement), name=f"si_{case}")
+    assert fragment in code, code
+
+
+@pytest.mark.parametrize("case", sorted(SELECT_INTO_CASES))
+def test_select_into_matches_oracle_in_postgresql(scratch_db, deployer_conn, runner_conn, case):
+    from app.migration.postgres_deployer import DeployTarget
+
+    statement, _, oracle_answer = SELECT_INTO_CASES[case]
+    name = f"si_{case}"
+    code = tr(_select_into_proc(name, statement), name=name)
+    deployed = PostgresDeployer(deployer_conn, database=scratch_db).deploy(code, DeployTarget("procedure", name))
+    assert deployed.ok, deployed.error
+    got = runner_conn.execute(f"CALL {name}(NULL, NULL, NULL)").fetchone()
+    runner_conn.rollback()
+    for value, expected in zip(got, oracle_answer, strict=True):
+        assert values_equal(value, expected), (got, oracle_answer)
+
+
+@pytest.mark.parametrize("where, oracle_error", [
+    ("WHERE emp_id = 999", "ORA-01403"),   # no row: NO_DATA_FOUND
+    ("", "ORA-01422"),                     # two rows: TOO_MANY_ROWS
+])
+def test_select_into_raises_like_oracle(scratch_db, deployer_conn, runner_conn, where, oracle_error):
+    from app.migration.postgres_deployer import DeployTarget
+
+    name = "si_raise_" + ("none" if where else "many")
+    code = tr(f"CREATE PROCEDURE {name} (o OUT NUMBER) IS BEGIN SELECT emp_id INTO o FROM employees {where}; END;",
+              name=name)
+    assert PostgresDeployer(deployer_conn, database=scratch_db).deploy(code, DeployTarget("procedure", name)).ok
+    with pytest.raises(psycopg.Error) as info:
+        runner_conn.execute(f"CALL {name}(NULL)")
+    runner_conn.rollback()
+    pg_error = ExecutionError(code=info.value.sqlstate, message=str(info.value))
+    assert categorize("postgres", pg_error) == categorize("oracle", ExecutionError(code=oracle_error, message=""))
