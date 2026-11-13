@@ -14,6 +14,6 @@ redis>=5.0
 langgraph>=0.2
 langgraph-checkpoint-postgres>=2.0
 google-genai>=1.0
-sqlglot>=25.0
+sqlglot==30.29.0
 httpx>=0.27
 pytest>=8.0
