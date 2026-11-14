@@ -1,7 +1,8 @@
-"""The Oracle to PostgreSQL converter (Stage 2, step 5): the deterministic path.
+"""The Oracle to PostgreSQL converter: the deterministic path (Stage 2, step 5) and the
+optional Gemini route for first attempts (step 6b-2).
 
 Implements the existing contract, ``Converter.convert(obj, feedback) -> ConversionResult``,
-by connecting the pieces built in steps 1 to 4. No new translation rules live here.
+by connecting the pieces built in steps 1 to 4 and 6a. No new translation rules live here.
 
 For each call:
 
@@ -9,14 +10,33 @@ For each call:
    once per attempt and passes ``conversion.version`` to validation).
 2. **Feature detection** (step 2). ``REVIEW`` findings stop at once: ``compiled_ok=False``,
    ``needs_review=True``, reason "Unsupported: ..." (decision D5). Nothing is deployed.
-3. **Feedback.** A repair attempt needs a different translation, which only the Gemini
-   fallback (step 6) can give: the deterministic rules return the same code for the same
-   source. Until then a repair attempt is reported as failed, without touching the
-   database, and the repair loop's attempt limit decides what happens next.
-4. **LLM-only constructs** (no rule yet, e.g. ``CONNECT BY``) and anything the translators
-   report as unsupported: ``compiled_ok=False`` with the reason; nothing is deployed.
-5. **Translate** (steps 3 and 4) and **deploy** (step 1). ``compiled_ok`` is the deployer's
+3. **Feedback.** A repair attempt needs a different translation: the deterministic rules
+   return the same code for the same source, and Gemini repairs need the previous attempt
+   and its test run as faithful evidence, which the contract does not carry yet (D-6.7,
+   step 7a). So a repair attempt is reported as failed, without calling Gemini or touching
+   the database, and the repair loop's attempt limit decides what happens next.
+4. **LLM-only constructs** (no rule yet, e.g. ``CONNECT BY``): without ``llm`` they are
+   not converted, as before. With ``llm`` they take the Gemini route below.
+5. Anything the translators report as unsupported: ``compiled_ok=False`` with the reason;
+   nothing is deployed. Translator gaps carry no codes yet, so they never reach Gemini.
+6. **Translate** (steps 3 and 4) and **deploy** (step 1). ``compiled_ok`` is the deployer's
    answer: True only after PostgreSQL committed the object.
+
+**The Gemini route** (step 6b-2, only when ``llm`` is given; first attempts only):
+
+* The object must pass 6a's ``eligibility()`` (REVIEW first, then only listed features),
+  checked here before anything is built and again inside ``GeminiFallback.ask``.
+* The ``DeployTarget`` comes from the IR alone, named exactly as the translator would.
+* The request holds the object, its LLM-only findings, the signatures of the objects it
+  uses and the column types of its tables. No deterministic partial code is sent.
+* Gemini's SQL reaches the database only through the injected restricted deployer, after
+  6a's strict parsing and ``plan_deployment`` checks; the deployer runs those checks again.
+* Every result on this route has ``tool=GEMINI`` and ``needs_review=True``. ``model`` is
+  ``settings.GEMINI_MODEL`` whenever Gemini was asked (never a name from Gemini's answer),
+  and ``None`` when it was not. Every failure, deployer or security rejection included,
+  is a failed Gemini result needing human review, never an ordinary retryable failure.
+* ``compiled_ok=True`` means only that PostgreSQL accepted and committed the object; it
+  does not mean the object behaves like Oracle's, and it is not approval.
 
 Never raises: an unexpected error becomes a failed ``ConversionResult``, so one object
 can't stop a whole run.
@@ -39,8 +59,18 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
+from app.config import settings
 from app.contracts.models import ConversionResult, ConversionTool, FailureReport, IRObject, ObjectType
-from app.migration.features import Handling, analyze_package, detect_features
+from app.contracts.object_ids import parse_object_id
+from app.migration.features import FeatureReport, Handling, analyze_package, detect_features
+from app.migration.llm_fallback import (
+    PROMPT_VERSION,
+    ConversionRequest,
+    FallbackFailure,
+    FallbackOutcome,
+    GeminiFallback,
+    eligibility,
+)
 from app.migration.plsql_translator import (
     ConversionContext,
     _name_sets,
@@ -52,6 +82,8 @@ from app.migration.sql_translator import translate_sql
 
 ROUTINES = (ObjectType.FUNCTION, ObjectType.PROCEDURE, ObjectType.TRIGGER)
 GEMINI_STEP = "the Gemini fallback (Stage 2, step 6)"
+#: Objects whose signatures are useful to Gemini; tables are described by column types.
+SIGNATURE_KINDS = (ObjectType.FUNCTION, ObjectType.PROCEDURE, ObjectType.SEQUENCE, ObjectType.VIEW)
 
 
 @dataclass(frozen=True)
@@ -65,10 +97,16 @@ class _Translation:
 
 @dataclass
 class OracleToPostgresConverter:
-    """Deterministic converter. Build one per run, with the target deployer and every parsed object."""
+    """Build one per run, with the target deployer and every parsed object.
+
+    ``llm`` is optional: without it the converter is exactly the deterministic step 5
+    converter. With a ``GeminiFallback`` it also takes eligible LLM-only objects through
+    Gemini on their first attempt (step 6b-2).
+    """
 
     deployer: PostgresDeployer
     objects: Iterable[IRObject]
+    llm: GeminiFallback | None = None
     _versions: dict[str, int] = field(default_factory=dict, init=False)
     _cache: dict[tuple[str, str], _Translation] = field(default_factory=dict, init=False)
 
@@ -108,13 +146,23 @@ class OracleToPostgresConverter:
         if report.handling is Handling.REVIEW:
             return self._result(obj, version, error=report.review_reason(), needs_review=True)
 
+        gemini_route = self.llm is not None and report.handling is Handling.LLM
+
         if feedback is not None:
+            if gemini_route:
+                return self._gemini_result(obj, version, error=(
+                    "Gemini repair_unavailable: Gemini repairs need the previous attempt and its test run "
+                    "(RepairContext, D-6.7, step 7a); nothing was sent to Gemini. "
+                    f"Last failure: {feedback.summary}"
+                ))
             return self._result(obj, version, error=(
                 f"Repair needs {GEMINI_STEP}: the deterministic rules give the same code for the same "
                 f"source. Last failure: {feedback.summary}"
             ))
 
         if report.handling is Handling.LLM:
+            if gemini_route:
+                return self._convert_with_gemini(obj, report, version)
             details = "; ".join(f.detail for f in report.by_handling(Handling.LLM))
             return self._result(obj, version, error=f"No deterministic rule for: {details}. Needs {GEMINI_STEP}.")
 
@@ -133,6 +181,111 @@ class OracleToPostgresConverter:
             error=None if deployed.ok else deployed.error,
             warnings=warnings,
             needs_review=bool(translation.review_reasons),
+        )
+
+    # --- the Gemini route (step 6b-2) ---------------------------------------------------
+
+    def _convert_with_gemini(self, obj: IRObject, report: FeatureReport, version: int) -> ConversionResult:
+        model = settings.GEMINI_MODEL  # read once per attempt: the warning and the field always agree
+        try:
+            return self._gemini_attempt(obj, report, version, model)
+        except Exception as exc:  # noqa: BLE001 - still a Gemini-route result needing review, never a crash
+            return self._gemini_result(obj, version, error=f"Gemini converter_error: {type(exc).__name__}: {exc}")
+
+    def _gemini_attempt(self, obj: IRObject, report: FeatureReport, version: int, model: str) -> ConversionResult:
+        not_eligible = f"Gemini {FallbackFailure.NOT_ELIGIBLE.value}"
+        gate = eligibility(report)  # checked again inside ask(); nothing is built for a refusal
+        if not gate.eligible:
+            return self._gemini_result(obj, version, error=f"{not_eligible}: {gate.reason}")
+        target, problem = self._target_for(obj)
+        if target is None:
+            return self._gemini_result(obj, version, error=f"{not_eligible}: {problem}")
+
+        outcome: FallbackOutcome = self.llm.ask(self._request_for(obj, report, target), report)
+        asked = outcome.prompt is not None  # True once a prompt was built and sent (or its send failed)
+        if not outcome.ok:
+            refused_code = outcome.answer.postgresql if outcome.answer is not None else ""
+            return self._gemini_result(
+                obj, version, model=model if asked else None, code=refused_code,
+                error=f"Gemini {outcome.failure.value}: {outcome.reason}",
+            )
+
+        answer = outcome.answer
+        deployed = self._deploy(_Translation(answer.postgresql, target))
+        warnings = [
+            f"Generated by Gemini (model {model}, prompt {PROMPT_VERSION}): human sign-off required",
+            f"Gemini explanation: {answer.explanation.strip()}" if answer.explanation.strip() else "",
+            *(f"Gemini warning: {w}" for w in answer.warnings),
+        ]
+        if deployed.ok:
+            return self._gemini_result(obj, version, model=model, code=answer.postgresql, compiled_ok=True,
+                                       warnings=warnings)
+        kind = "deploy_refused" if deployed.refused else "deploy_failed"
+        return self._gemini_result(obj, version, model=model, code=answer.postgresql, warnings=warnings,
+                                   error=f"Gemini {kind}: {deployed.error}")
+
+    def _target_for(self, obj: IRObject) -> tuple[DeployTarget | None, str | None]:
+        """The object to create, from the IR alone, named exactly as the translator names it."""
+        schema = (self._contexts.get(obj.object_id) or ConversionContext()).schema
+        name = obj.name.lower()
+        try:
+            if obj.type == ObjectType.VIEW:
+                return DeployTarget("view", name), None
+            if obj.type in (ObjectType.FUNCTION, ObjectType.PROCEDURE):
+                return DeployTarget(obj.type.value, name, schema=schema), None
+            if obj.type == ObjectType.TRIGGER:
+                if obj.trigger is None:
+                    return None, "the trigger's table is not in the upload (no TriggerInfo)"
+                table = parse_object_id(obj.trigger.table).name.lower()
+                return DeployTarget("trigger", name, schema=schema, trigger_table=table,
+                                    trigger_function=f"{name}_fn"), None
+        except ValueError as exc:
+            return None, f"no valid PostgreSQL target ({exc})"
+        return None, f"{obj.type.value} objects have no Gemini route"
+
+    def _request_for(self, obj: IRObject, report: FeatureReport, target: DeployTarget) -> ConversionRequest:
+        """Only IR facts: never settings, environment, connections or deterministic partial code."""
+        tables = {t.lower() for t in (*obj.reads_tables, *obj.writes_tables)}
+        if obj.trigger is not None:
+            tables.add(parse_object_id(obj.trigger.table).name.lower())
+        context = self._contexts.get(obj.object_id) or ConversionContext()
+        return ConversionRequest(
+            obj=obj,
+            target=target,
+            findings=tuple(f.detail for f in report.by_handling(Handling.LLM)),
+            dependencies=tuple(
+                self.objects[ref] for ref in obj.depends_on
+                if ref in self.objects and self.objects[ref].type in SIGNATURE_KINDS
+            ),
+            column_types={k: v for k, v in context.column_types.items() if k.split(".", 1)[0] in tables},
+        )
+
+    @staticmethod
+    def _gemini_result(
+        obj: IRObject,
+        version: int,
+        *,
+        error: str | None = None,
+        code: str = "",
+        compiled_ok: bool = False,
+        warnings: list[str] | None = None,
+        model: str | None = None,
+    ) -> ConversionResult:
+        """Every result on the Gemini route: tool GEMINI, always needs review.
+
+        ``model`` is the configured setting, passed only when Gemini was asked; never a name
+        taken from Gemini's answer.
+        """
+        return ConversionResult(
+            object_id=obj.object_id,
+            version=version,
+            tool=ConversionTool.GEMINI,
+            target_code=code,
+            compiled_ok=compiled_ok,
+            compile_error=None if compiled_ok else error,
+            warnings=[w for w in (warnings or []) if w],
+            needs_review=True,
+            model=model,
         )
 
     def _translate(self, obj: IRObject) -> _Translation:
