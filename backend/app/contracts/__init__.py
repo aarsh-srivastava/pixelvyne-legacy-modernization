@@ -26,6 +26,8 @@ from app.contracts.models import (
     ObjectType,
     Param,
     ParamMode,
+    PreviousAttempt,
+    RepairContext,
     TableDiff,
     TestCase,
     TestOutcome,
@@ -38,7 +40,7 @@ from app.contracts.models import (
 __all__ = [
     "Analyzer", "Converter", "CONTRACT_VERSION", "ConversionResult", "ConversionTool",
     "ExecutionError", "ExecutionResult", "FailureReport", "FieldDiff", "IRObject",
-    "ObjectType", "Param", "ParamMode", "TableDiff", "TestCase", "TestOutcome",
+    "ObjectType", "Param", "ParamMode", "PreviousAttempt", "RepairContext", "TableDiff", "TestCase", "TestOutcome",
     "TestStatus", "TriggerInfo", "ValidationResult", "ValidationStatus",
     # object identity (contract 0.2)
     "OBJECT_ID_PATTERN", "ObjectIdCollisionError", "ObjectRef", "check_unique_object_ids",

@@ -21,7 +21,7 @@ from pathlib import Path
 
 import psycopg
 
-from app.contracts import ConversionResult, ConversionTool, FailureReport, IRObject
+from app.contracts import ConversionResult, ConversionTool, FailureReport, IRObject, RepairContext
 
 STAND_IN_WARNING = "Scripted stand-in: prepared PostgreSQL replayed, not converted."
 
@@ -44,7 +44,15 @@ class ScriptedConverter:
         self._calls: dict[str, int] = {}
         self._last: dict[str, ConversionResult] = {}
 
-    def convert(self, obj: IRObject, feedback: FailureReport | None = None) -> ConversionResult:
+    def convert(
+        self,
+        obj: IRObject,
+        feedback: FailureReport | None = None,
+        *,
+        context: RepairContext | None = None,
+        run_id: str | None = None,
+    ) -> ConversionResult:
+        """The prepared files decide each attempt; feedback, context and run_id are not used."""
         version = self._calls.get(obj.object_id, 0) + 1
         self._calls[obj.object_id] = version
 

@@ -16,11 +16,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.contracts.object_ids import normalize_identifier, parse_object_id
 
-CONTRACT_VERSION = "0.3"   # 0.3: ConversionResult.model (optional); 0.2: canonical object_ids, TriggerInfo
+CONTRACT_VERSION = "0.4"   # 0.4: RepairContext, ConversionResult.failure_code, convert(run_id=); 0.3: .model
 
 
 # ---------------------------------------------------------------- enums
@@ -142,6 +142,10 @@ class ConversionResult(BaseModel):
     * ``model`` is the LLM that produced ``target_code`` (from settings, never from the
       model's own answer); ``None`` when no LLM was involved. Added in contract 0.3; older
       results without it load as ``None``.
+    * ``failure_code`` says, machine-readably, why a failed attempt failed, so the repair
+      loop can decide whether another attempt can help (e.g. ``"review_required"``,
+      ``"gemini.deploy_failed"``). ``None`` on success and from converters that do not set
+      it (the loop then treats a failure as retryable, as before). Added in contract 0.4.
     """
 
     object_id: str
@@ -153,6 +157,7 @@ class ConversionResult(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     needs_review: bool = False         # a human must still approve
     model: str | None = None           # LLM that produced target_code, e.g. "gemini-2.5-flash"
+    failure_code: str | None = None    # why a failed attempt failed; None on success (0.4)
     produced_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -230,3 +235,51 @@ class ValidationResult(BaseModel):
     passed: int
     failed: int
     status: ValidationStatus
+
+
+# ---------------------------------------------------------------- repair context (D-6.7)
+
+class PreviousAttempt(BaseModel):
+    """The attempt being repaired, exactly as the converter returned it."""
+
+    version: int = Field(ge=1)          # the ConversionResult.version being repaired
+    tool: ConversionTool
+    code: str                           # exactly what that attempt produced
+    deployed: bool                      # did PostgreSQL accept it (compiled_ok)?
+    deploy_error: str | None = None     # set only when deployed is False
+
+    @model_validator(mode="after")
+    def _deployed_has_no_error(self) -> PreviousAttempt:
+        if self.deployed and self.deploy_error:
+            raise ValueError("a deployed attempt has no deploy error")
+        return self
+
+
+class RepairContext(BaseModel):
+    """What a repair attempt needs to know, built fresh by the repair loop for each repair.
+
+    Kept apart from FailureReport, which stays a pure description of failing tests.
+    Validation evidence and deploy errors never mix: the tests that failed are in
+    ``last_validation`` (whose ``conversion_version`` says which version they ran on),
+    the deploy error of the attempt being repaired is in ``previous.deploy_error``.
+    """
+
+    run_id: str = Field(min_length=1)   # one per repair-loop run
+    object_id: str
+    attempt: int = Field(ge=2)          # the loop attempt about to run
+    previous: PreviousAttempt
+    last_validation: ValidationResult | None = None
+
+    @model_validator(mode="after")
+    def _consistent(self) -> RepairContext:
+        validation = self.last_validation
+        if validation is None:
+            return self
+        if validation.object_id != self.object_id:
+            raise ValueError(f"the last test run is for {validation.object_id}, not {self.object_id}")
+        if validation.conversion_version > self.previous.version:
+            raise ValueError(f"the last test run is for v{validation.conversion_version}, "
+                             f"later than the previous attempt v{self.previous.version}")
+        if validation.conversion_version == self.previous.version and not self.previous.deployed:
+            raise ValueError(f"v{self.previous.version} did not deploy, so it cannot have been tested")
+        return self

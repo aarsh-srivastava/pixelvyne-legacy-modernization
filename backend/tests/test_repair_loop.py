@@ -58,11 +58,15 @@ HARNESS = validation(ValidationStatus.NEEDS_HUMAN, outcome("cb-01", TestStatus.P
 class FakeConverter:
     def __init__(self, compiled=None, needs_review=False):
         self.calls = []
+        self.contexts = []
+        self.run_ids = []
         self.compiled = compiled or {}
         self.needs_review = needs_review
 
-    def convert(self, obj, feedback=None):
+    def convert(self, obj, feedback=None, *, context=None, run_id=None):
         self.calls.append(feedback)
+        self.contexts.append(context)
+        self.run_ids.append(run_id)
         version = len(self.calls)
         ok = self.compiled.get(version, True)
         return ConversionResult(object_id=obj.object_id, version=version, tool=ConversionTool.MANUAL,
@@ -133,14 +137,18 @@ def test_harness_errors_go_to_a_human_without_retrying():
     assert result.attempts[0].errors == 1
 
 
-def test_compile_error_is_fed_back_and_not_validated():
+def test_compile_error_is_sent_back_in_the_context_and_not_validated():
+    """D-6.7: a deploy error travels in RepairContext.previous, never dressed up as a FailureReport."""
     conv, validate = FakeConverter(compiled={1: False}), scripted_validator(PASS)
     result = run(conv, validate)
     assert result.outcome == RepairOutcome.PASSED
     assert validate.versions == [2]
     assert result.attempts[0].compiled_ok is False
-    assert "did not compile" in conv.calls[1].summary
-    assert conv.calls[1].failing_tests == []
+    assert conv.calls[1] is None  # no test has run yet, so there is no FailureReport
+    context = conv.contexts[1]
+    assert context.previous.version == 1 and context.previous.deployed is False
+    assert context.previous.deploy_error == 'syntax error at or near "ELSIF"'
+    assert context.previous.code == "-- v1" and context.last_validation is None
 
 
 def test_never_compiling_ends_with_a_human():

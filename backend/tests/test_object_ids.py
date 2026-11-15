@@ -23,7 +23,7 @@ from app.contracts.object_ids import OBJECT_KINDS
 
 
 def test_contract_version_is_bumped():
-    assert CONTRACT_VERSION == "0.3"  # 0.3: ConversionResult.model
+    assert CONTRACT_VERSION == "0.4"  # 0.4: RepairContext, failure_code; 0.3: model
 
 
 def test_kinds_stay_in_step_with_object_type():

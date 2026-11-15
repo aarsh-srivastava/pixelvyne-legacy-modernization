@@ -1,7 +1,7 @@
 """The Oracle to PostgreSQL converter: the deterministic path (Stage 2, step 5) and the
-optional Gemini route for first attempts (step 6b-2).
+optional Gemini route for first attempts (step 6b-2) and repairs (step 7a).
 
-Implements the existing contract, ``Converter.convert(obj, feedback) -> ConversionResult``,
+Implements the contract ``Converter.convert(obj, feedback=None, *, context=None, run_id=None)``,
 by connecting the pieces built in steps 1 to 4 and 6a. No new translation rules live here.
 
 For each call:
@@ -10,11 +10,14 @@ For each call:
    once per attempt and passes ``conversion.version`` to validation).
 2. **Feature detection** (step 2). ``REVIEW`` findings stop at once: ``compiled_ok=False``,
    ``needs_review=True``, reason "Unsupported: ..." (decision D5). Nothing is deployed.
-3. **Feedback.** A repair attempt needs a different translation: the deterministic rules
-   return the same code for the same source, and Gemini repairs need the previous attempt
-   and its test run as faithful evidence, which the contract does not carry yet (D-6.7,
-   step 7a). So a repair attempt is reported as failed, without calling Gemini or touching
-   the database, and the repair loop's attempt limit decides what happens next.
+3. **Repairs** (``feedback`` and/or ``context`` given). The deterministic rules return the
+   same code for the same source, so a deterministic object has no repair route: the
+   attempt fails with ``failure_code="no_repair_route"``, without touching the database.
+   An object on the Gemini route is repaired by Gemini, but only with a ``RepairContext``
+   (D-6.7) describing an attempt this converter produced *in the same run*: every attempt
+   is recorded with the ``run_id`` it was made for, and a context from another run, or for
+   an attempt made without a run id, is refused. Without a valid context nothing is sent
+   to Gemini.
 4. **LLM-only constructs** (no rule yet, e.g. ``CONNECT BY``): without ``llm`` they are
    not converted, as before. With ``llm`` they take the Gemini route below.
 5. Anything the translators report as unsupported: ``compiled_ok=False`` with the reason;
@@ -22,7 +25,7 @@ For each call:
 6. **Translate** (steps 3 and 4) and **deploy** (step 1). ``compiled_ok`` is the deployer's
    answer: True only after PostgreSQL committed the object.
 
-**The Gemini route** (step 6b-2, only when ``llm`` is given; first attempts only):
+**The Gemini route** (only when ``llm`` is given; first attempts since 6b-2, repairs since 7a):
 
 * The object must pass 6a's ``eligibility()`` (REVIEW first, then only listed features),
   checked here before anything is built and again inside ``GeminiFallback.ask``.
@@ -31,12 +34,21 @@ For each call:
   uses and the column types of its tables. No deterministic partial code is sent.
 * Gemini's SQL reaches the database only through the injected restricted deployer, after
   6a's strict parsing and ``plan_deployment`` checks; the deployer runs those checks again.
+* A repair also sends the previous attempt, its deploy error and the last test run (6a's
+  ``RepairEvidence``); Gemini returning the same code again is refused (unchanged output).
 * Every result on this route has ``tool=GEMINI`` and ``needs_review=True``. ``model`` is
   ``settings.GEMINI_MODEL`` whenever Gemini was asked (never a name from Gemini's answer),
   and ``None`` when it was not. Every failure, deployer or security rejection included,
   is a failed Gemini result needing human review, never an ordinary retryable failure.
 * ``compiled_ok=True`` means only that PostgreSQL accepted and committed the object; it
   does not mean the object behaves like Oracle's, and it is not approval.
+
+**Failure codes** (``ConversionResult.failure_code``, contract 0.4) tell the repair loop why
+an attempt failed: ``review_required``, ``not_converted``, ``needs_gemini``,
+``translator_gap``, ``no_repair_route``, ``deploy_failed``, ``deploy_refused`` and
+``converter_error`` on the deterministic path; ``gemini.<code>`` on the Gemini route, with
+6a's ``FallbackFailure`` values plus ``repair_unavailable``, ``deploy_failed``,
+``deploy_refused`` and ``converter_error``.
 
 Never raises: an unexpected error becomes a failed ``ConversionResult``, so one object
 can't stop a whole run.
@@ -60,7 +72,14 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from app.config import settings
-from app.contracts.models import ConversionResult, ConversionTool, FailureReport, IRObject, ObjectType
+from app.contracts.models import (
+    ConversionResult,
+    ConversionTool,
+    FailureReport,
+    IRObject,
+    ObjectType,
+    RepairContext,
+)
 from app.contracts.object_ids import parse_object_id
 from app.migration.features import FeatureReport, Handling, analyze_package, detect_features
 from app.migration.llm_fallback import (
@@ -69,6 +88,8 @@ from app.migration.llm_fallback import (
     FallbackFailure,
     FallbackOutcome,
     GeminiFallback,
+    InvalidRepairEvidence,
+    RepairEvidence,
     eligibility,
 )
 from app.migration.plsql_translator import (
@@ -101,13 +122,17 @@ class OracleToPostgresConverter:
 
     ``llm`` is optional: without it the converter is exactly the deterministic step 5
     converter. With a ``GeminiFallback`` it also takes eligible LLM-only objects through
-    Gemini on their first attempt (step 6b-2).
+    Gemini: first attempts (step 6b-2) and repairs given a ``RepairContext`` (step 7a).
     """
 
     deployer: PostgresDeployer
     objects: Iterable[IRObject]
     llm: GeminiFallback | None = None
     _versions: dict[str, int] = field(default_factory=dict, init=False)
+    #: (object_id, version) -> (run_id, sha256 of target_code, compiled_ok) for every attempt
+    #: this converter produced. Used only to check that a RepairContext describes one of them,
+    #: made in the same run. run_id is None for attempts made without one (never repairable).
+    _produced: dict[tuple[str, int], tuple[str | None, str, bool]] = field(default_factory=dict, init=False)
     _cache: dict[tuple[str, str], _Translation] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
@@ -122,54 +147,75 @@ class OracleToPostgresConverter:
 
     # --- the contract ------------------------------------------------------------------
 
-    def convert(self, obj: IRObject, feedback: FailureReport | None = None) -> ConversionResult:
+    def convert(
+        self,
+        obj: IRObject,
+        feedback: FailureReport | None = None,
+        *,
+        context: RepairContext | None = None,
+        run_id: str | None = None,
+    ) -> ConversionResult:
+        """One attempt for ``obj``. ``run_id`` names the repair-loop run it belongs to. A repair
+        (``context`` given) is accepted only with an explicit ``run_id`` equal to the context's,
+        so the context can never vouch for the attempt that checks it (D-6.7). Callers that
+        never repair may leave ``run_id`` out, as before 7a."""
         version = self._versions.get(obj.object_id, 0) + 1
         self._versions[obj.object_id] = version
+        run = run_id  # the attempt's identity comes only from the caller, never from the context
         try:
-            return self._convert(obj, feedback, version)
+            result = self._convert(obj, feedback, context, version, run)
         except Exception as exc:  # noqa: BLE001 - one object must never stop the run
-            return self._result(obj, version, error=f"Converter error: {type(exc).__name__}: {exc}")
+            result = self._result(obj, version, error=f"Converter error: {type(exc).__name__}: {exc}",
+                                  failure="converter_error")
+        self._produced[(obj.object_id, version)] = (run, _sha(result.target_code), result.compiled_ok)
+        return result
 
     # --- the steps ---------------------------------------------------------------------
 
-    def _convert(self, obj: IRObject, feedback: FailureReport | None, version: int) -> ConversionResult:
+    def _convert(
+        self, obj: IRObject, feedback: FailureReport | None, context: RepairContext | None, version: int,
+        run: str | None,
+    ) -> ConversionResult:
         if obj.type in (ObjectType.TABLE, ObjectType.SEQUENCE):
-            return self._result(obj, version, error=(
+            return self._result(obj, version, failure="not_converted", error=(
                 "Not converted: tables and sequences are hand-written in phase 1 (D8)."
             ))
         if obj.type == ObjectType.PACKAGE:
-            return self._result(obj, version, error=(
+            return self._result(obj, version, failure="not_converted", error=(
                 f"Not deployed on its own: package members are deployed into schema {obj.name.lower()} (D1)."
             ))
 
         report = detect_features(obj.source_code, package=obj.package, packages=self._packages)
         if report.handling is Handling.REVIEW:
-            return self._result(obj, version, error=report.review_reason(), needs_review=True)
+            return self._result(obj, version, error=report.review_reason(), needs_review=True,
+                                failure="review_required")
 
         gemini_route = self.llm is not None and report.handling is Handling.LLM
 
-        if feedback is not None:
+        if feedback is not None or context is not None:
             if gemini_route:
-                return self._gemini_result(obj, version, error=(
-                    "Gemini repair_unavailable: Gemini repairs need the previous attempt and its test run "
-                    "(RepairContext, D-6.7, step 7a); nothing was sent to Gemini. "
-                    f"Last failure: {feedback.summary}"
-                ))
-            return self._result(obj, version, error=(
+                if context is None:
+                    return self._gemini_result(obj, version, failure="repair_unavailable", detail=(
+                        "Gemini repairs need a RepairContext from the repair loop (D-6.7); nothing was sent "
+                        f"to Gemini. Last failure: {feedback.summary}"
+                    ))
+                return self._convert_with_gemini(obj, report, version, context, run)
+            return self._result(obj, version, failure="no_repair_route", error=(
                 f"Repair needs {GEMINI_STEP}: the deterministic rules give the same code for the same "
-                f"source. Last failure: {feedback.summary}"
+                f"source. Last failure: {_last_failure(feedback, context)}"
             ))
 
         if report.handling is Handling.LLM:
             if gemini_route:
                 return self._convert_with_gemini(obj, report, version)
             details = "; ".join(f.detail for f in report.by_handling(Handling.LLM))
-            return self._result(obj, version, error=f"No deterministic rule for: {details}. Needs {GEMINI_STEP}.")
+            return self._result(obj, version, failure="needs_gemini",
+                                error=f"No deterministic rule for: {details}. Needs {GEMINI_STEP}.")
 
         translation = self._translate(obj)
         if translation.unsupported:
             return self._result(obj, version, error="Not converted: " + "; ".join(translation.unsupported),
-                                warnings=list(translation.warnings))
+                                warnings=list(translation.warnings), failure="translator_gap")
 
         deployed = self._deploy(translation)
         warnings = list(translation.warnings) + [f"Needs review: {r}" for r in translation.review_reasons]
@@ -181,48 +227,97 @@ class OracleToPostgresConverter:
             error=None if deployed.ok else deployed.error,
             warnings=warnings,
             needs_review=bool(translation.review_reasons),
+            failure=None if deployed.ok else ("deploy_refused" if deployed.refused else "deploy_failed"),
         )
 
     # --- the Gemini route (step 6b-2) ---------------------------------------------------
 
-    def _convert_with_gemini(self, obj: IRObject, report: FeatureReport, version: int) -> ConversionResult:
+    def _convert_with_gemini(
+        self, obj: IRObject, report: FeatureReport, version: int, context: RepairContext | None = None,
+        run: str | None = None,
+    ) -> ConversionResult:
         model = settings.GEMINI_MODEL  # read once per attempt: the warning and the field always agree
         try:
-            return self._gemini_attempt(obj, report, version, model)
+            return self._gemini_attempt(obj, report, version, model, context, run)
         except Exception as exc:  # noqa: BLE001 - still a Gemini-route result needing review, never a crash
-            return self._gemini_result(obj, version, error=f"Gemini converter_error: {type(exc).__name__}: {exc}")
+            return self._gemini_result(obj, version, failure="converter_error", detail=f"{type(exc).__name__}: {exc}")
 
-    def _gemini_attempt(self, obj: IRObject, report: FeatureReport, version: int, model: str) -> ConversionResult:
-        not_eligible = f"Gemini {FallbackFailure.NOT_ELIGIBLE.value}"
+    def _gemini_attempt(
+        self, obj: IRObject, report: FeatureReport, version: int, model: str, context: RepairContext | None,
+        run: str | None = None,
+    ) -> ConversionResult:
+        not_eligible = FallbackFailure.NOT_ELIGIBLE.value
         gate = eligibility(report)  # checked again inside ask(); nothing is built for a refusal
         if not gate.eligible:
-            return self._gemini_result(obj, version, error=f"{not_eligible}: {gate.reason}")
+            return self._gemini_result(obj, version, failure=not_eligible, detail=gate.reason)
         target, problem = self._target_for(obj)
         if target is None:
-            return self._gemini_result(obj, version, error=f"{not_eligible}: {problem}")
+            return self._gemini_result(obj, version, failure=not_eligible, detail=problem)
 
-        outcome: FallbackOutcome = self.llm.ask(self._request_for(obj, report, target), report)
+        repair = None
+        if context is not None:  # a repair (step 7a): the evidence must be this run's own attempt
+            try:
+                repair = self._repair_evidence(obj, context, version, run)
+            except InvalidRepairEvidence as exc:
+                return self._gemini_result(obj, version, failure=FallbackFailure.INVALID_EVIDENCE.value,
+                                           detail=str(exc))
+
+        outcome: FallbackOutcome = self.llm.ask(self._request_for(obj, report, target), report, repair=repair)
         asked = outcome.prompt is not None  # True once a prompt was built and sent (or its send failed)
         if not outcome.ok:
             refused_code = outcome.answer.postgresql if outcome.answer is not None else ""
-            return self._gemini_result(
-                obj, version, model=model if asked else None, code=refused_code,
-                error=f"Gemini {outcome.failure.value}: {outcome.reason}",
-            )
+            return self._gemini_result(obj, version, model=model if asked else None, code=refused_code,
+                                       failure=outcome.failure.value, detail=outcome.reason)
 
         answer = outcome.answer
         deployed = self._deploy(_Translation(answer.postgresql, target))
         warnings = [
             f"Generated by Gemini (model {model}, prompt {PROMPT_VERSION}): human sign-off required",
+            f"Repair of v{repair.previous_version}" if repair is not None else "",
             f"Gemini explanation: {answer.explanation.strip()}" if answer.explanation.strip() else "",
             *(f"Gemini warning: {w}" for w in answer.warnings),
         ]
         if deployed.ok:
             return self._gemini_result(obj, version, model=model, code=answer.postgresql, compiled_ok=True,
                                        warnings=warnings)
-        kind = "deploy_refused" if deployed.refused else "deploy_failed"
         return self._gemini_result(obj, version, model=model, code=answer.postgresql, warnings=warnings,
-                                   error=f"Gemini {kind}: {deployed.error}")
+                                   failure="deploy_refused" if deployed.refused else "deploy_failed",
+                                   detail=deployed.error)
+
+    def _repair_evidence(
+        self, obj: IRObject, context: RepairContext, version: int, run: str | None = None
+    ) -> RepairEvidence:
+        """6a's RepairEvidence from a RepairContext, after checking it describes this run's own attempt.
+
+        The context must be about ``obj``, about an earlier version, and about an attempt this
+        converter actually produced in the same run (same run_id, same code, same deploy
+        outcome): evidence from another object, another run or a later attempt is refused,
+        never sent to Gemini, even when its code matches.
+        """
+        previous = context.previous
+        if context.object_id != obj.object_id:
+            raise InvalidRepairEvidence(f"the repair context is for {context.object_id}, not {obj.object_id}")
+        if run is None:
+            raise InvalidRepairEvidence("a repair needs the run_id of the attempt being made; none was given")
+        if run != context.run_id:
+            raise InvalidRepairEvidence("the repair context belongs to a different run than this attempt")
+        if previous.version >= version:
+            raise InvalidRepairEvidence(
+                f"the previous attempt v{previous.version} is not earlier than this attempt v{version}")
+        produced = self._produced.get((obj.object_id, previous.version))
+        if produced is None or produced[0] != context.run_id:
+            raise InvalidRepairEvidence(f"v{previous.version} in the repair context was not produced in this run")
+        if produced[1:] != (_sha(previous.code), previous.deployed):
+            raise InvalidRepairEvidence(
+                f"v{previous.version} in the repair context is not an attempt this converter produced in this run")
+        return RepairEvidence(
+            object_id=context.object_id,
+            previous_version=previous.version,
+            previous_code=previous.code,
+            deployed=previous.deployed,
+            deploy_error=previous.deploy_error,
+            last_validation=context.last_validation,
+        )
 
     def _target_for(self, obj: IRObject) -> tuple[DeployTarget | None, str | None]:
         """The object to create, from the IR alone, named exactly as the translator names it."""
@@ -265,7 +360,8 @@ class OracleToPostgresConverter:
         obj: IRObject,
         version: int,
         *,
-        error: str | None = None,
+        failure: str | None = None,
+        detail: str | None = None,
         code: str = "",
         compiled_ok: bool = False,
         warnings: list[str] | None = None,
@@ -273,6 +369,7 @@ class OracleToPostgresConverter:
     ) -> ConversionResult:
         """Every result on the Gemini route: tool GEMINI, always needs review.
 
+        A failure reads ``"Gemini <failure>: <detail>"`` and has ``failure_code`` ``"gemini.<failure>"``.
         ``model`` is the configured setting, passed only when Gemini was asked; never a name
         taken from Gemini's answer.
         """
@@ -282,10 +379,11 @@ class OracleToPostgresConverter:
             tool=ConversionTool.GEMINI,
             target_code=code,
             compiled_ok=compiled_ok,
-            compile_error=None if compiled_ok else error,
+            compile_error=None if compiled_ok else f"Gemini {failure}: {detail}",
             warnings=[w for w in (warnings or []) if w],
             needs_review=True,
             model=model,
+            failure_code=None if compiled_ok else f"gemini.{failure}",
         )
 
     def _translate(self, obj: IRObject) -> _Translation:
@@ -320,6 +418,7 @@ class OracleToPostgresConverter:
         error: str | None = None,
         warnings: list[str] | None = None,
         needs_review: bool = False,
+        failure: str | None = None,
     ) -> ConversionResult:
         return ConversionResult(
             object_id=obj.object_id,
@@ -330,7 +429,20 @@ class OracleToPostgresConverter:
             compile_error=error,
             warnings=warnings or [],
             needs_review=needs_review,
+            failure_code=None if compiled_ok else failure,
         )
+
+
+def _sha(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def _last_failure(feedback: FailureReport | None, context: RepairContext | None) -> str:
+    if feedback is not None:
+        return feedback.summary
+    if context is not None and context.previous.deploy_error:
+        return f"v{context.previous.version} did not deploy: {context.previous.deploy_error}"
+    return "not given"
 
 
 # --- views ------------------------------------------------------------------------------

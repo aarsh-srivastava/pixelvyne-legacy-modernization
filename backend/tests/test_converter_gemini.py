@@ -286,17 +286,19 @@ def test_a_repair_of_a_deterministic_object_is_unchanged_by_gemini(objects, obje
     assert with_llm.tool is ConversionTool.SQLGLOT and fake.calls == [] and deployer.calls == []
 
 
-def test_the_repair_loop_calls_gemini_at_most_once(objects):
+def test_the_repair_loop_stops_when_gemini_repeats_rejected_sql(objects):
+    """7a: a rejected deploy is repaired once; the same SQL again is unchanged output and stops."""
     failed = FakeDeployer(DeployResult(ok=False, error="42703: column does not exist", sqlstate="42703"))
-    converter, fake, _ = make(objects, reply=answer(), deployer=failed)
+    converter, fake, deployer = make(objects, reply=answer(), deployer=failed)
 
     def validate(obj, cases, version) -> ValidationResult:  # never reached: nothing compiles
         raise AssertionError("validate must not run")
 
     run = run_repair_loop(RepairDeps(converter=converter, validate=validate), objects[ORG], [])
-    assert len(fake.calls) == 1
-    assert run.outcome is RepairOutcome.NEEDS_HUMAN and len(run.attempts) == 3
-    assert [a.tool for a in run.attempts] == [ConversionTool.GEMINI] * 3
+    assert len(fake.calls) == 2 and len(deployer.calls) == 1  # the unchanged repair is never deployed
+    assert run.outcome is RepairOutcome.NEEDS_HUMAN and len(run.attempts) == 2
+    assert [a.failure_code for a in run.attempts] == ["gemini.deploy_failed", "gemini.unchanged_output"]
+    assert [a.tool for a in run.attempts] == [ConversionTool.GEMINI] * 2
 
 
 def test_a_passing_gemini_object_reports_passed_needs_review(objects):

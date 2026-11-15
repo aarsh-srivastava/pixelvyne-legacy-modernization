@@ -15,7 +15,7 @@ OUT = Path(os.getenv("CONTRACTS_DIR", Path(__file__).resolve().parents[3] / "con
 
 EXPORT = [
     models.IRObject, models.ConversionResult, models.TestCase, models.ExecutionResult,
-    models.TestOutcome, models.FailureReport, models.ValidationResult,
+    models.TestOutcome, models.FailureReport, models.ValidationResult, models.RepairContext,
 ]
 
 

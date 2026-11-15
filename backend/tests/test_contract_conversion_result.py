@@ -34,8 +34,8 @@ V02_JSON = json.dumps({
 })
 
 
-def test_version_is_0_3():
-    assert CONTRACT_VERSION == "0.3"
+def test_version_is_at_least_0_3():
+    assert tuple(map(int, CONTRACT_VERSION.split("."))) >= (0, 3)  # model was added in 0.3
 
 
 def test_a_0_2_result_without_model_still_loads():
@@ -80,14 +80,15 @@ def test_the_json_schema_marks_model_optional():
     assert kinds == {"string", "null"}
 
 
-def test_the_schema_export_writes_version_0_3(tmp_path):
-    """export_schemas.py (the documented way to regenerate the JSON) runs and stamps 0.3."""
+def test_the_schema_export_stamps_the_current_version(tmp_path):
+    """export_schemas.py (the documented way to regenerate the JSON) runs and stamps the version."""
     subprocess.run([sys.executable, "-m", "app.contracts.export_schemas"], cwd=BACKEND, check=True,
                    env=os.environ | {"CONTRACTS_DIR": str(tmp_path)},
                    capture_output=True, text=True)
     schema = json.loads((tmp_path / "ConversionResult.schema.json").read_text())
-    assert schema["$comment"] == "contract version 0.3"
+    assert schema["$comment"] == f"contract version {CONTRACT_VERSION}"
     assert "model" in schema["properties"] and "model" not in schema.get("required", [])
     assert {p.name for p in tmp_path.glob("*.schema.json")} == {
         f"{name}.schema.json" for name in ("IRObject", "ConversionResult", "TestCase", "ExecutionResult",
-                                           "TestOutcome", "FailureReport", "ValidationResult")}
+                                           "TestOutcome", "FailureReport", "ValidationResult",
+                                           "RepairContext")}
