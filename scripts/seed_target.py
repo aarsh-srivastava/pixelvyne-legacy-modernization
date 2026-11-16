@@ -1,10 +1,13 @@
 """Load (or reset) the hand-written PostgreSQL stand-in into the target sandbox.
 
 Usage, from the repo root on your laptop:
-    python scripts/seed_target.py
+    python scripts/seed_target.py                  # schema, data and the careless stand-ins
+    python scripts/seed_target.py --schema-only    # schema and data only (step 7b, real converter)
 
-Wipes the target sandbox's public schema, then runs samples/postgres/*.sql in name
-order. Only ever points at target-db (port 5433), never at app-db.
+Wipes the target sandbox's public schema (and the payroll_pkg schema), then runs
+samples/postgres/*.sql in name order; with --schema-only only 01_schema.sql and
+02_seed_data.sql, so the real converter deploys every routine, trigger and view itself.
+Only ever points at target-db (port 5433), never at app-db.
 
 Connection defaults to the docker-compose value as seen from the host; override with
     TARGET_DATABASE_URL_HOST=postgresql://sandbox:sandbox@localhost:5433/target
@@ -26,7 +29,10 @@ TARGET_URL = os.getenv(
 def main() -> int:
     import psycopg
 
+    schema_only = "--schema-only" in sys.argv[1:]
     files = sorted(SAMPLES.glob("*.sql"))
+    if schema_only:
+        files = [f for f in files if f.name in ("01_schema.sql", "02_seed_data.sql")]
     if not files:
         print(f"No .sql files in {SAMPLES}")
         return 1
@@ -36,6 +42,7 @@ def main() -> int:
         if db != "target":
             print(f"Refusing to wipe database '{db}': expected 'target'.")
             return 1
+        conn.execute("DROP SCHEMA IF EXISTS payroll_pkg CASCADE")  # a package schema the real converter made
         conn.execute("DROP SCHEMA IF EXISTS public CASCADE")
         conn.execute("CREATE SCHEMA public")
         for path in files:

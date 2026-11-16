@@ -323,14 +323,17 @@ def test_every_translation_deploys_in_dependency_order(sandbox):
     assert not failures
 
 
-GOLDEN = [(object_id, case) for object_id, cases in GOLDEN_TESTS.items() for case in cases]
+#: org_chart has no deterministic rule (CONNECT BY): it is never translated here; its golden
+#: test runs on the Gemini route in test_validation_7b.
+GOLDEN = [(object_id, case) for object_id, cases in GOLDEN_TESTS.items() for case in cases
+          if object_id != "view:legacy.org_chart"]
 
 
 @pytest.mark.parametrize("object_id, case", GOLDEN, ids=[case.test_id for _, case in GOLDEN])
 def test_golden_test_matches_oracle(sandbox, runner, object_id, case):
     _, objects, _ = sandbox
     expected = ORACLE_EXPECTED[case.test_id]
-    result = run_postgres(runner, objects[object_id], case, WATCH)
+    result = run_postgres(runner, objects[object_id], case, WATCH, objects)  # objects: setup calls (7b)
     if "error" in expected:
         oracle_error = ExecutionError(code=expected["error"], message="")
         assert categorize("postgres", result.error) == categorize("oracle", oracle_error)

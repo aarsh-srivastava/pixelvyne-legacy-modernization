@@ -8,11 +8,15 @@ ValidationResult.status:
   requires_repair  at least one behavioural failure: send FailureReport to the converter
   needs_human      no behavioural failure, but the harness could not judge some tests
 `failed` counts behavioural failures only; harness errors show as TestStatus.ERROR.
+
+``objects`` (step 7b) maps object_id -> IRObject for the routines a test's setup calls,
+e.g. monthly_payroll before close_month. Rows are compared in order when the test names
+``order_by`` (a view test), as a multiset otherwise.
 """
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from app.contracts.models import (
     ExecutionError,
@@ -29,10 +33,10 @@ from app.validation.oracle_runner import run_oracle
 from app.validation.postgres_runner import run_postgres
 
 
-def _guarded(engine: str, runner, conn, obj, case, watch_tables) -> ExecutionResult:
-    """A runner that crashes (unsupported object, bad connection) is a harness error."""
+def _guarded(engine: str, runner, conn, obj, case, watch_tables, objects=None) -> ExecutionResult:
+    """A runner that crashes (unsupported object, bad connection, refused action) is a harness error."""
     try:
-        return runner(conn, obj, case, watch_tables)
+        return runner(conn, obj, case, watch_tables, objects)
     except Exception as exc:  # noqa: BLE001 - anything here means "could not judge"
         return ExecutionResult(
             engine=engine,
@@ -48,11 +52,12 @@ def run_case(
     case: TestCase,
     watch_tables: Iterable[str] = (),
     masked_columns: dict[str, set[str]] | None = None,
+    objects: Mapping[str, IRObject] | None = None,
 ) -> TestOutcome:
     tables = list(watch_tables)
-    source = _guarded("oracle", run_oracle, oracle_conn, obj, case, tables)
-    target = _guarded("postgres", run_postgres, pg_conn, obj, case, tables)
-    return compare(case, source, target, masked_columns=masked_columns)
+    source = _guarded("oracle", run_oracle, oracle_conn, obj, case, tables, objects)
+    target = _guarded("postgres", run_postgres, pg_conn, obj, case, tables, objects)
+    return compare(case, source, target, ordered_rows=bool(case.order_by), masked_columns=masked_columns)
 
 
 def validate_object(
@@ -63,9 +68,10 @@ def validate_object(
     conversion_version: int = 1,
     watch_tables: Iterable[str] = (),
     masked_columns: dict[str, set[str]] | None = None,
+    objects: Mapping[str, IRObject] | None = None,
 ) -> ValidationResult:
     tables = list(watch_tables)
-    outcomes = [run_case(oracle_conn, pg_conn, obj, c, tables, masked_columns) for c in cases]
+    outcomes = [run_case(oracle_conn, pg_conn, obj, c, tables, masked_columns, objects) for c in cases]
     passed = sum(o.status == TestStatus.PASSED for o in outcomes)
     failed = sum(o.status == TestStatus.FAILED for o in outcomes)
     errors = sum(o.status == TestStatus.ERROR for o in outcomes)

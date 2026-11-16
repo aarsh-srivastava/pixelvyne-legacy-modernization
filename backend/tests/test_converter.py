@@ -198,10 +198,10 @@ from tests.target_pg import DEPLOYER_PASSWORD, RUNNER_PASSWORD, _admin_connect, 
 WATCH = ["employees", "salary_audit", "payroll_runs"]
 
 
-def _judge(runner_conn, obj, case) -> TestOutcome:
+def _judge(runner_conn, obj, case, objects=None) -> TestOutcome:
     """PostgreSQL's answer for one golden test, judged against Oracle's recorded answer."""
     expected = ORACLE_EXPECTED[case.test_id]
-    result = run_postgres(runner_conn, obj, case, WATCH)
+    result = run_postgres(runner_conn, obj, case, WATCH, objects)  # objects: for setup calls (7b)
     if "error" in expected:
         ok = categorize("postgres", result.error) == categorize(
             "oracle", ExecutionError(code=expected["error"], message=""))
@@ -251,12 +251,19 @@ def test_whole_sample_in_dependency_order(sandbox, objects):
     assert {k for k, r in results.items() if r.needs_review} == {"procedure:legacy.monthly_payroll"}
 
 
-@pytest.mark.parametrize("object_id", sorted(GOLDEN_TESTS))
+#: The Gemini-route object: no deterministic rule exists (CONNECT BY), so this converter,
+#: built without Gemini, cannot convert it. test_validation_7b covers it with a recorded answer.
+GEMINI_ROUTE = {"view:legacy.org_chart"}
+#: Deployed, but flagged for human sign-off (a parameter default PostgreSQL rejects was dropped).
+FLAGGED_FOR_REVIEW = {"procedure:legacy.monthly_payroll"}
+
+
+@pytest.mark.parametrize("object_id", sorted(set(GOLDEN_TESTS) - GEMINI_ROUTE))
 def test_repair_loop_with_the_real_converter(sandbox, objects, object_id):
     converter, runner_conn = sandbox
 
     def validate(obj, cases, version) -> ValidationResult:
-        outcomes = [_judge(runner_conn, obj, case) for case in cases]
+        outcomes = [_judge(runner_conn, obj, case, objects) for case in cases]
         runner_conn.rollback()
         failed = sum(o.status is TestStatus.FAILED for o in outcomes)
         return ValidationResult(
@@ -267,7 +274,8 @@ def test_repair_loop_with_the_real_converter(sandbox, objects, object_id):
 
     run = run_repair_loop(RepairDeps(converter=converter, validate=validate), objects[object_id],
                           GOLDEN_TESTS[object_id])
-    assert run.outcome is RepairOutcome.PASSED, run.reason
+    flagged = object_id in FLAGGED_FOR_REVIEW
+    assert run.outcome is (RepairOutcome.PASSED_NEEDS_REVIEW if flagged else RepairOutcome.PASSED), run.reason
     assert len(run.attempts) == 1  # right first time: no repair needed
     assert run.final_conversion.tool is ConversionTool.SQLGLOT
     assert run.final_validation.passed == len(GOLDEN_TESTS[object_id])

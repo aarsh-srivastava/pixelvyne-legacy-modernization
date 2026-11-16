@@ -12,6 +12,7 @@ Flow of data:
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
@@ -20,7 +21,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.contracts.object_ids import normalize_identifier, parse_object_id
 
-CONTRACT_VERSION = "0.4"   # 0.4: RepairContext, ConversionResult.failure_code, convert(run_id=); 0.3: .model
+CONTRACT_VERSION = "0.5"   # 0.5: TestCase.setup/action/order_by; 0.4: RepairContext, failure_code; 0.3: .model
 
 
 # ---------------------------------------------------------------- enums
@@ -163,7 +164,30 @@ class ConversionResult(BaseModel):
 
 # ---------------------------------------------------------------- validation
 
+_PLAIN_COLUMN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
+
+
+class SetupCall(BaseModel):
+    """A routine run before the test, in the same rolled-back transaction (contract 0.5).
+
+    Its result is never compared; only what the test itself then does is. E.g. pk-04 runs
+    ``monthly_payroll(2026-09-15)`` first, then tests ``close_month``.
+    """
+
+    object_id: str
+    inputs: dict[str, Any] = Field(default_factory=dict)          # IN params by name
+
+
 class TestCase(BaseModel):
+    """One behavioural test, run on both engines and compared.
+
+    How the object is exercised depends on its type: a function or procedure is called
+    with ``inputs``; a view is queried (``SELECT * ... ORDER BY order_by``) and its rows
+    compared; a trigger is fired by ``action``, one fixed DML statement. ``setup`` (and
+    the older ``setup_calls``) run first. Fields added in 0.5 are optional, so test cases
+    written for 0.2 to 0.4 load unchanged.
+    """
+
     __test__ = False  # not a pytest class
 
     test_id: str                       # e.g. "cb-02"
@@ -171,10 +195,25 @@ class TestCase(BaseModel):
     description: str
     inputs: dict[str, Any] = Field(default_factory=dict)          # IN params by name
     fixture_rows: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)  # table -> rows to insert first
-    setup_calls: list[str] = Field(default_factory=list)          # object_ids to run first (e.g. payroll before close_month)
+    setup_calls: list[str] = Field(default_factory=list)          # object_ids to run first, no inputs (0.2)
     frozen_now: datetime | None = None                            # replaces SYSDATE / now()
     origin: Literal["golden", "rule", "llm"] = "rule"
     rationale: str | None = None
+    setup: list[SetupCall] = Field(default_factory=list)          # (0.5) calls with inputs, run first
+    action: str | None = None          # (0.5) one INSERT/UPDATE/DELETE that fires a trigger; trusted tests only
+    order_by: list[str] = Field(default_factory=list)            # (0.5) view tests: rows compared in this order
+
+    @field_validator("order_by")
+    @classmethod
+    def _plain_columns(cls, value: list[str]) -> list[str]:
+        for column in value:
+            if not _PLAIN_COLUMN.match(column):
+                raise ValueError(f"order_by takes plain column names, got {column!r}")
+        return [c.lower() for c in value]
+
+    def setup_steps(self) -> list[SetupCall]:
+        """Everything to run before the test: ``setup_calls`` (no inputs) first, then ``setup``."""
+        return [SetupCall(object_id=object_id) for object_id in self.setup_calls] + list(self.setup)
 
 
 class ExecutionError(BaseModel):

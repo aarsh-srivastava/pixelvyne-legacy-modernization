@@ -4,14 +4,21 @@ Mirrors oracle_runner: same TestCase in, same ExecutionResult shape out, watched
 snapshotted before and after, rolled back afterwards. Only ever connect this to
 target-db: converted code is untrusted.
 
-A converted procedure is called with CALL; its OUT parameters come back as one row.
-A package member is called as <package>.<name>, the schema Ora2Pg puts it in.
+How an object is exercised (step 7b adds views, triggers and setup calls):
+
+* procedure: ``CALL``; its OUT parameters come back as one row. Function: ``SELECT f(...)``.
+  A package member is called as <package>.<name>, the schema it is deployed into.
+* view: ``SELECT * FROM view ORDER BY <case.order_by>``; the rows are the result.
+* trigger: ``case.action`` (one trusted INSERT/UPDATE/DELETE, see actions.py) is run, and
+  only as ``pv_runner``; what the trigger did shows up in the watched tables.
+* ``case.setup_steps()`` run first, in the same transaction, before the snapshot, so only
+  what the test itself does is compared. Setup objects are looked up in ``objects``.
 """
 
 from __future__ import annotations
 
 import time
-from typing import Iterable
+from typing import Any, Iterable, Mapping
 
 import psycopg
 from psycopg import sql
@@ -26,6 +33,8 @@ from app.contracts.models import (
     TableDiff,
     TestCase,
 )
+from app.migration.target_roles import RUNNER_ROLE
+from app.validation.actions import checked_action
 from app.validation.table_diff import check_identifier, diff_snapshots
 
 PK_SQL = """
@@ -46,6 +55,12 @@ def _routine_name(obj: IRObject) -> sql.Composable:
     return name
 
 
+def _setup_object(object_id: str, objects: Mapping[str, IRObject] | None) -> IRObject:
+    if not objects or object_id not in objects:
+        raise LookupError(f"setup object {object_id} was not given to the runner")
+    return objects[object_id]
+
+
 def _snapshot(cur, table: str) -> tuple[list[str], list[dict]]:
     name = check_identifier(table).lower()
     cur.execute(PK_SQL, [name])
@@ -54,18 +69,8 @@ def _snapshot(cur, table: str) -> tuple[list[str], list[dict]]:
     return key_columns, [dict(r) for r in cur.fetchall()]
 
 
-def run_postgres(
-    conn: psycopg.Connection,
-    obj: IRObject,
-    case: TestCase,
-    watch_tables: Iterable[str] = (),
-) -> ExecutionResult:
-    started = time.perf_counter()
-    return_value = None
-    out_params: dict = {}
-    error = None
-    table_diffs: list[TableDiff] = []
-
+def _call(cur, obj: IRObject, inputs: dict) -> tuple[Any, dict]:
+    """Call a function or procedure; (return value, OUT parameters)."""
     placeholders: list[sql.Composable] = []
     values: list = []
     out_names: list[str] = []
@@ -75,27 +80,69 @@ def run_postgres(
             placeholders.append(sql.SQL("NULL"))
         else:
             placeholders.append(sql.Placeholder())
-            values.append(case.inputs.get(name))
+            values.append(inputs.get(name))
         if p.mode in (ParamMode.OUT, ParamMode.IN_OUT):
             out_names.append(name)
     arg_list = sql.SQL(", ").join(placeholders)
+    if obj.type == ObjectType.PROCEDURE:
+        cur.execute(sql.SQL("CALL {}({})").format(_routine_name(obj), arg_list), values)
+        row = cur.fetchone() if out_names else None
+        return None, ({n: row[n] for n in out_names} if row else {})
+    if obj.type == ObjectType.FUNCTION:
+        cur.execute(sql.SQL("SELECT {}({}) AS return_value").format(_routine_name(obj), arg_list), values)
+        return cur.fetchone()["return_value"], {}
+    raise NotImplementedError(f"Postgres runner cannot call a {obj.type.value}")
+
+
+def _query_view(cur, obj: IRObject, order_by: list[str]) -> list[dict]:
+    query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(check_identifier(obj.name).lower()))
+    if order_by:
+        query += sql.SQL(" ORDER BY {}").format(
+            sql.SQL(", ").join(sql.Identifier(check_identifier(c).lower()) for c in order_by))
+    cur.execute(query)
+    return [{k.lower(): v for k, v in row.items()} for row in cur.fetchall()]
+
+
+def _fire(cur, case: TestCase) -> None:
+    """Run the trigger test's action, only after every check and only as pv_runner."""
+    statement = checked_action(case)
+    cur.execute("SELECT current_user AS who")
+    who = cur.fetchone()["who"]
+    if who != RUNNER_ROLE:
+        raise PermissionError(f"trigger actions run only as {RUNNER_ROLE}, not as {who}")
+    cur.execute(statement)
+
+
+def run_postgres(
+    conn: psycopg.Connection,
+    obj: IRObject,
+    case: TestCase,
+    watch_tables: Iterable[str] = (),
+    objects: Mapping[str, IRObject] | None = None,
+) -> ExecutionResult:
+    started = time.perf_counter()
+    return_value = None
+    out_params: dict = {}
+    rows: list[dict] | None = None
+    error = None
+    table_diffs: list[TableDiff] = []
+    setup = case.setup_steps()
+    setup_objects = [_setup_object(step.object_id, objects) for step in setup]  # missing: harness error
 
     try:
         with conn.cursor(row_factory=dict_row) as cur:
+            for step, target in zip(setup, setup_objects, strict=True):
+                _call(cur, target, step.inputs)
             before = {t: _snapshot(cur, t) for t in watch_tables}
 
-            if obj.type == ObjectType.PROCEDURE:
-                cur.execute(sql.SQL("CALL {}({})").format(_routine_name(obj), arg_list), values)
-                row = cur.fetchone() if out_names else None
-                out_params = {n: row[n] for n in out_names} if row else {}
-            elif obj.type == ObjectType.FUNCTION:
-                cur.execute(
-                    sql.SQL("SELECT {}({}) AS return_value").format(_routine_name(obj), arg_list),
-                    values,
-                )
-                return_value = cur.fetchone()["return_value"]
+            if obj.type in (ObjectType.PROCEDURE, ObjectType.FUNCTION):
+                return_value, out_params = _call(cur, obj, case.inputs)
+            elif obj.type == ObjectType.VIEW:
+                rows = _query_view(cur, obj, case.order_by)
+            elif obj.type == ObjectType.TRIGGER:
+                _fire(cur, case)
             else:
-                raise NotImplementedError(f"Postgres runner cannot execute a {obj.type.value} yet")
+                raise NotImplementedError(f"Postgres runner cannot execute a {obj.type.value}")
 
             for table, (keys, rows_before) in before.items():
                 diff = diff_snapshots(table.lower(), keys, rows_before, _snapshot(cur, table)[1])
@@ -105,7 +152,7 @@ def run_postgres(
     except psycopg.Error as exc:
         message = (str(exc).strip().splitlines() or [type(exc).__name__])[0]
         error = ExecutionError(code=exc.sqlstate, message=message)
-        out_params, table_diffs = {}, []
+        out_params, table_diffs, rows = {}, [], None
     finally:
         conn.rollback()
 
@@ -114,6 +161,7 @@ def run_postgres(
         test_id=case.test_id,
         return_value=return_value,
         out_params=out_params,
+        rows=rows,
         table_diffs=table_diffs,
         error=error,
         duration_ms=round((time.perf_counter() - started) * 1000, 2),
