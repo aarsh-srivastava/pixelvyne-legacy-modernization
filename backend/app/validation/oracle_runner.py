@@ -11,7 +11,9 @@ How an object is exercised (the same rules as postgres_runner):
 * standalone and package procedures and functions with scalar parameters: called;
 * views (step 7b): ``SELECT * FROM view ORDER BY <case.order_by>``; the rows are the result;
 * triggers (step 7b): ``case.action``, one trusted INSERT/UPDATE/DELETE (actions.py), fires it;
-* ``case.setup_steps()`` run first, in the same transaction and before the snapshot.
+* ``case.setup_steps()`` run first, in the same transaction and before the snapshot;
+* ``case.fixture_rows`` (step 7c) are inserted before the setup, only after the checks in
+  fixtures.py, with every value bound as a parameter.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from app.contracts.models import (
     TestCase,
 )
 from app.validation.actions import checked_action
+from app.validation.fixtures import checked_fixtures, oracle_insert
 from app.validation.table_diff import check_identifier, diff_snapshots
 
 # Return Oracle NUMBERs as Decimal, never float, so 4250.03 stays exactly 4250.03.
@@ -102,6 +105,12 @@ def _query_view(cur, obj: IRObject, order_by: list[str]) -> list[dict]:
     return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
 
+def _context(message: str) -> str | None:
+    """Oracle's ORA-06512 lines (where it was raised: in which object, at which line), bounded."""
+    lines = [line.strip() for line in message.splitlines() if line.strip().startswith("ORA-06512")]
+    return "\n".join(lines)[:1000] or None
+
+
 def _setup_object(object_id: str, objects: Mapping[str, IRObject] | None) -> IRObject:
     if not objects or object_id not in objects:
         raise LookupError(f"setup object {object_id} was not given to the runner")
@@ -124,8 +133,11 @@ def run_oracle(
     table_diffs: list[TableDiff] = []
     setup = case.setup_steps()
     setup_objects = [_setup_object(step.object_id, objects) for step in setup]  # missing: harness error
+    inserts = checked_fixtures(case)  # refused before any SQL: harness error
 
     try:
+        for table, columns, values in inserts:
+            cur.execute(oracle_insert(table, columns), values)
         for step, target in zip(setup, setup_objects, strict=True):
             _call(cur, target, step.inputs)
         before = {t: _snapshot(cur, t) for t in watch_tables}
@@ -147,8 +159,8 @@ def run_oracle(
     except oracledb.DatabaseError as exc:
         (err,) = exc.args
         code = getattr(err, "full_code", None)
-        message = getattr(err, "message", str(exc)).strip().splitlines()[0]
-        error = ExecutionError(code=code, message=message)
+        full = getattr(err, "message", str(exc)).strip()
+        error = ExecutionError(code=code, message=full.splitlines()[0], context=_context(full))
         out_params, table_diffs, rows = {}, [], None
     finally:
         conn.rollback()

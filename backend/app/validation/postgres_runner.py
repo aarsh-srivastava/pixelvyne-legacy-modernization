@@ -13,6 +13,8 @@ How an object is exercised (step 7b adds views, triggers and setup calls):
   only as ``pv_runner``; what the trigger did shows up in the watched tables.
 * ``case.setup_steps()`` run first, in the same transaction, before the snapshot, so only
   what the test itself does is compared. Setup objects are looked up in ``objects``.
+* ``case.fixture_rows`` (step 7c) are inserted before the setup, only after the checks in
+  fixtures.py and only as pv_runner, with every value bound as a parameter.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ from app.contracts.models import (
 )
 from app.migration.target_roles import RUNNER_ROLE
 from app.validation.actions import checked_action
+from app.validation.fixtures import checked_fixtures
 from app.validation.table_diff import check_identifier, diff_snapshots
 
 PK_SQL = """
@@ -103,14 +106,36 @@ def _query_view(cur, obj: IRObject, order_by: list[str]) -> list[dict]:
     return [{k.lower(): v for k, v in row.items()} for row in cur.fetchall()]
 
 
-def _fire(cur, case: TestCase) -> None:
-    """Run the trigger test's action, only after every check and only as pv_runner."""
-    statement = checked_action(case)
+def _require_runner(cur, what: str) -> None:
     cur.execute("SELECT current_user AS who")
     who = cur.fetchone()["who"]
     if who != RUNNER_ROLE:
-        raise PermissionError(f"trigger actions run only as {RUNNER_ROLE}, not as {who}")
+        raise PermissionError(f"{what} run only as {RUNNER_ROLE}, not as {who}")
+
+
+def _fire(cur, case: TestCase) -> None:
+    """Run the trigger test's action, only after every check and only as pv_runner."""
+    statement = checked_action(case)
+    _require_runner(cur, "trigger actions")
     cur.execute(statement)
+
+
+def _insert_fixtures(cur, inserts: list[tuple[str, list[str], list]]) -> None:
+    """Insert checked fixture rows (fixtures.py), only as pv_runner; values are bound."""
+    if not inserts:
+        return
+    _require_runner(cur, "fixture rows")
+    for table, columns, values in inserts:
+        cur.execute(sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
+            sql.Identifier(table), sql.SQL(", ").join(sql.Identifier(c) for c in columns),
+            sql.SQL(", ").join(sql.Placeholder() for _ in columns)), values)
+
+
+def _context(exc: psycopg.Error) -> str | None:
+    """PL/pgSQL's context (where in which function it was raised), bounded."""
+    diag = getattr(exc, "diag", None)
+    context = getattr(diag, "context", None) if diag is not None else None
+    return context.strip()[:1000] if context else None
 
 
 def run_postgres(
@@ -128,9 +153,11 @@ def run_postgres(
     table_diffs: list[TableDiff] = []
     setup = case.setup_steps()
     setup_objects = [_setup_object(step.object_id, objects) for step in setup]  # missing: harness error
+    inserts = checked_fixtures(case)  # refused before any SQL: harness error
 
     try:
         with conn.cursor(row_factory=dict_row) as cur:
+            _insert_fixtures(cur, inserts)
             for step, target in zip(setup, setup_objects, strict=True):
                 _call(cur, target, step.inputs)
             before = {t: _snapshot(cur, t) for t in watch_tables}
@@ -151,7 +178,7 @@ def run_postgres(
 
     except psycopg.Error as exc:
         message = (str(exc).strip().splitlines() or [type(exc).__name__])[0]
-        error = ExecutionError(code=exc.sqlstate, message=message)
+        error = ExecutionError(code=exc.sqlstate, message=message, context=_context(exc))
         out_params, table_diffs, rows = {}, [], None
     finally:
         conn.rollback()

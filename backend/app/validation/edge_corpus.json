@@ -1,0 +1,7910 @@
+{
+ "header": {
+  "budget": 150,
+  "case_count": 150,
+  "case_set_hash": "3b1ec2b1f4cb8cf9e10edc87c3ea8e95e9537c5cb82bb8b8d8ae13e50ad82bfe",
+  "format": 2,
+  "generator_version": "7c.1",
+  "oracle_version": "23.26.3.0.0",
+  "recorded_at": "2026-11-16T06:05:55+00:00",
+  "results_sha256": "1dc0b34a151733610ad7998ca918ad3685d4ff99aaeb4d7b502cbce9db5b5a17",
+  "seed": 7000003,
+  "sources": {
+   "01_schema.sql": "87842e7d50f57c68ec75cbb058dd85a5f9f85be4033ea2dbf38b385e06afbb4c",
+   "02_seed_data.sql": "b02ab5e2e34f52b9d9e2fcf9c9b9069fbf61d66facb4fc5bc97800c6c832b33a",
+   "03_payroll_pkg.sql": "e4d4fd37b56deff488d6e634fd16c1cc1301755e0ee79300ff3ea689292c97da",
+   "04_functions.sql": "d445dfb6eba7f54f22ec7fa901fe6b793b697abc430ff5bf1d9851f6d74fe28e",
+   "05_procedures.sql": "438247cb11e026906b421fba8b2a26e72d94c75a0f9cc11e9d0256546093c684",
+   "06_triggers.sql": "2f33f39663e89090aee94a9eace7aacedcdba645dbb1bbd43ea53b6c9532d1bb",
+   "07_views.sql": "c8836e98eeed8c65f44cf4e15e6002ab0d750c6aeca08b56c7f248dc42f33f33"
+  }
+ },
+ "results": {
+  "gen-ar-missing_record-311a26cb": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "-1"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-ar-missing_record-311a26cb"
+  },
+  "gen-ar-null_empty-15a1ddde": {
+   "engine": "oracle",
+   "error": {
+    "code": "ORA-01407",
+    "context": "ORA-06512: at \"LEGACY.APPLY_RAISE\", line 16\nORA-06512: at line 1",
+    "message": "ORA-01407: cannot update (\"LEGACY\".\"EMPLOYEES\".\"BASE_SALARY\") to NULL"
+   },
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-ar-null_empty-15a1ddde"
+  },
+  "gen-ar-numeric_boundary-279eb0bb": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "75600"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "75600"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "sana@pv.test",
+        "emp_id": {
+         "$decimal": "107"
+        },
+        "full_name": "Sana Khan",
+        "hire_date": {
+         "$datetime": "2024-02-29T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": "A",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "72000"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "sana@pv.test",
+        "emp_id": {
+         "$decimal": "107"
+        },
+        "full_name": "Sana Khan",
+        "hire_date": {
+         "$datetime": "2024-02-29T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": "A",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "107"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "30"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "new_salary": {
+        "$decimal": "75600"
+       },
+       "old_salary": {
+        "$decimal": "72000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-279eb0bb"
+  },
+  "gen-ar-numeric_boundary-29fdd029": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "55000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "55000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": null,
+        "emp_id": {
+         "$decimal": "109"
+        },
+        "full_name": "Meera Iyer",
+        "hire_date": {
+         "$datetime": "2026-09-17T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "50000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": null,
+        "emp_id": {
+         "$decimal": "109"
+        },
+        "full_name": "Meera Iyer",
+        "hire_date": {
+         "$datetime": "2026-09-17T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "109"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "32"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "new_salary": {
+        "$decimal": "55000"
+       },
+       "old_salary": {
+        "$decimal": "50000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-29fdd029"
+  },
+  "gen-ar-numeric_boundary-432a1fea": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "165000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "165000"
+        },
+        "dept_id": {
+         "$decimal": "10"
+        },
+        "email": "dev@pv.test",
+        "emp_id": {
+         "$decimal": "110"
+        },
+        "full_name": "Dev Malhotra",
+        "hire_date": {
+         "$datetime": "2017-08-08T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "101"
+        },
+        "perf_rating": "B",
+        "status": "INACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "150000"
+        },
+        "dept_id": {
+         "$decimal": "10"
+        },
+        "email": "dev@pv.test",
+        "emp_id": {
+         "$decimal": "110"
+        },
+        "full_name": "Dev Malhotra",
+        "hire_date": {
+         "$datetime": "2017-08-08T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "101"
+        },
+        "perf_rating": "B",
+        "status": "INACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "110"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "36"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "110"
+       },
+       "new_salary": {
+        "$decimal": "165000"
+       },
+       "old_salary": {
+        "$decimal": "150000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-432a1fea"
+  },
+  "gen-ar-numeric_boundary-757a6ebf": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "91375.54"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "91375.54"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "85000.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "104"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "12"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "new_salary": {
+        "$decimal": "91375.54"
+       },
+       "old_salary": {
+        "$decimal": "85000.5"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-757a6ebf"
+  },
+  "gen-ar-numeric_boundary-7d8c079d": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "85850.51"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "85850.51"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "85000.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "104"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "8"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "new_salary": {
+        "$decimal": "85850.51"
+       },
+       "old_salary": {
+        "$decimal": "85000.5"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-7d8c079d"
+  },
+  "gen-ar-numeric_boundary-89f89819": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "99960"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "99960"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "priya@pv.test",
+        "emp_id": {
+         "$decimal": "103"
+        },
+        "full_name": "Priya Nair",
+        "hire_date": {
+         "$datetime": "2019-03-15T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "101"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "98000"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "priya@pv.test",
+        "emp_id": {
+         "$decimal": "103"
+        },
+        "full_name": "Priya Nair",
+        "hire_date": {
+         "$datetime": "2019-03-15T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "101"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "103"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "40"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "new_salary": {
+        "$decimal": "99960"
+       },
+       "old_salary": {
+        "$decimal": "98000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-89f89819"
+  },
+  "gen-ar-numeric_boundary-93037078": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "0"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "85000.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "104"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "4"
+       },
+       "change_type": "CUT",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "new_salary": {
+        "$decimal": "0"
+       },
+       "old_salary": {
+        "$decimal": "85000.5"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-93037078"
+  },
+  "gen-ar-numeric_boundary-9db22c14": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "57680"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "57680"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "arjun@pv.test",
+        "emp_id": {
+         "$decimal": "108"
+        },
+        "full_name": "Arjun Das",
+        "hire_date": {
+         "$datetime": "2026-03-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "56000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "arjun@pv.test",
+        "emp_id": {
+         "$decimal": "108"
+        },
+        "full_name": "Arjun Das",
+        "hire_date": {
+         "$datetime": "2026-03-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "108"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "34"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "new_salary": {
+        "$decimal": "57680"
+       },
+       "old_salary": {
+        "$decimal": "56000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-9db22c14"
+  },
+  "gen-ar-numeric_boundary-b1c00c7f": {
+   "engine": "oracle",
+   "error": {
+    "code": "ORA-01438",
+    "context": "ORA-06512: at \"LEGACY.APPLY_RAISE\", line 16\nORA-06512: at line 1",
+    "message": "ORA-01438: value 850090000.5 greater than specified precision (10, 2) for column "
+   },
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-ar-numeric_boundary-b1c00c7f"
+  },
+  "gen-ar-numeric_boundary-d28f2a7b": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "84150.5"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "84150.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "85000.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "104"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "6"
+       },
+       "change_type": "CUT",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "new_salary": {
+        "$decimal": "84150.5"
+       },
+       "old_salary": {
+        "$decimal": "85000.5"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-d28f2a7b"
+  },
+  "gen-ar-numeric_boundary-dd917ae8": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "170001"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "170001"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "85000.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "104"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "10"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "new_salary": {
+        "$decimal": "170001"
+       },
+       "old_salary": {
+        "$decimal": "85000.5"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-dd917ae8"
+  },
+  "gen-ar-numeric_boundary-def8d210": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "65920"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "65920"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "vikram@pv.test",
+        "emp_id": {
+         "$decimal": "106"
+        },
+        "full_name": "Vikram Rao",
+        "hire_date": {
+         "$datetime": "2023-01-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "64000"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "vikram@pv.test",
+        "emp_id": {
+         "$decimal": "106"
+        },
+        "full_name": "Vikram Rao",
+        "hire_date": {
+         "$datetime": "2023-01-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "106"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "42"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "new_salary": {
+        "$decimal": "65920"
+       },
+       "old_salary": {
+        "$decimal": "64000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-def8d210"
+  },
+  "gen-ar-numeric_boundary-f5d91cbf": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "58800"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "58800"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "arjun@pv.test",
+        "emp_id": {
+         "$decimal": "108"
+        },
+        "full_name": "Arjun Das",
+        "hire_date": {
+         "$datetime": "2026-03-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "56000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "arjun@pv.test",
+        "emp_id": {
+         "$decimal": "108"
+        },
+        "full_name": "Arjun Das",
+        "hire_date": {
+         "$datetime": "2026-03-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "108"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "38"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "new_salary": {
+        "$decimal": "58800"
+       },
+       "old_salary": {
+        "$decimal": "56000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-ar-numeric_boundary-f5d91cbf"
+  },
+  "gen-ar-trigger_firing-19609543": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "101000.75"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-ar-trigger_firing-19609543"
+  },
+  "gen-ar-trigger_firing-abdc499b": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "85000.5"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-ar-trigger_firing-abdc499b"
+  },
+  "gen-ar-trigger_firing-acd0c86d": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_new_salary": {
+     "$decimal": "240000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-ar-trigger_firing-acd0c86d"
+  },
+  "gen-cb-missing_record-35115e65": {
+   "engine": "oracle",
+   "error": {
+    "code": "ORA-01403",
+    "context": "ORA-06512: at \"LEGACY.CALC_BONUS\", line 9\nORA-06512: at line 1",
+    "message": "ORA-01403: no data found"
+   },
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-missing_record-35115e65"
+  },
+  "gen-cb-missing_record-4933f558": {
+   "engine": "oracle",
+   "error": {
+    "code": "ORA-01403",
+    "context": "ORA-06512: at \"LEGACY.CALC_BONUS\", line 9\nORA-06512: at line 1",
+    "message": "ORA-01403: no data found"
+   },
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-missing_record-4933f558"
+  },
+  "gen-cb-missing_record-d08a11da": {
+   "engine": "oracle",
+   "error": {
+    "code": "ORA-01403",
+    "context": "ORA-06512: at \"LEGACY.CALC_BONUS\", line 9\nORA-06512: at line 1",
+    "message": "ORA-01403: no data found"
+   },
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-missing_record-d08a11da"
+  },
+  "gen-cb-null_empty-11f83ea7": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "8500.05"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-null_empty-11f83ea7"
+  },
+  "gen-cb-null_empty-30d34445": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "5050.04"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-null_empty-30d34445"
+  },
+  "gen-cb-null_empty-60f5692c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "48000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-null_empty-60f5692c"
+  },
+  "gen-cb-null_empty-892286e0": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "48000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-null_empty-892286e0"
+  },
+  "gen-cb-null_empty-96370a64": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "8500.05"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-null_empty-96370a64"
+  },
+  "gen-cb-null_empty-9df93d0b": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "5050.04"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-null_empty-9df93d0b"
+  },
+  "gen-cb-null_empty-ff5a015f": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "9800"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-null_empty-ff5a015f"
+  },
+  "gen-cb-numeric_boundary-0aba1fd8": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "500"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-0aba1fd8"
+  },
+  "gen-cb-numeric_boundary-0c12af7d": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "20000000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-0c12af7d"
+  },
+  "gen-cb-numeric_boundary-25da82da": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "4900"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-25da82da"
+  },
+  "gen-cb-numeric_boundary-2a440ab5": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "20200.15"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-2a440ab5"
+  },
+  "gen-cb-numeric_boundary-443854da": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "24000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-443854da"
+  },
+  "gen-cb-numeric_boundary-6b5f085c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "30000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-6b5f085c"
+  },
+  "gen-cb-numeric_boundary-7e931f49": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "15000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-7e931f49"
+  },
+  "gen-cb-numeric_boundary-950d9182": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "4250.03"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-950d9182"
+  },
+  "gen-cb-numeric_boundary-9cb19770": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "17000.1"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-9cb19770"
+  },
+  "gen-cb-numeric_boundary-9fd702f7": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-numeric_boundary-9fd702f7"
+  },
+  "gen-cb-text_domain-03c05ba5": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "3200"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-text_domain-03c05ba5"
+  },
+  "gen-cb-text_domain-d8603de1": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_bonus": {
+     "$decimal": "6000"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-text_domain-d8603de1"
+  },
+  "gen-cb-text_domain-d9209f20": {
+   "engine": "oracle",
+   "error": {
+    "code": "ORA-06502",
+    "context": "ORA-06512: at \"LEGACY.CALC_BONUS\", line 15\nORA-06512: at line 1",
+    "message": "ORA-06502: PL/SQL: value or conversion error: character string buffer too small"
+   },
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cb-text_domain-d9209f20"
+  },
+  "gen-cm-duplicate_record-ce2f1f85": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "182150.28"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-duplicate_record-ce2f1f85"
+  },
+  "gen-cm-leap_year-6f3b30bb": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "95325.14"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-leap_year-6f3b30bb"
+  },
+  "gen-cm-missing_record-1a3ddc5c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-missing_record-1a3ddc5c"
+  },
+  "gen-cm-missing_record-2e1d8fc3": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-missing_record-2e1d8fc3"
+  },
+  "gen-cm-missing_record-5bde800d": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-missing_record-5bde800d"
+  },
+  "gen-cm-missing_record-752f9d62": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-missing_record-752f9d62"
+  },
+  "gen-cm-missing_record-a1712c30": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-missing_record-a1712c30"
+  },
+  "gen-cm-missing_record-e24edaee": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-missing_record-e24edaee"
+  },
+  "gen-cm-missing_record-f4e722d1": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-missing_record-f4e722d1"
+  },
+  "gen-cm-missing_record-f99e8945": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-missing_record-f99e8945"
+  },
+  "gen-cm-month_end-234b58a8": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "91075.14"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-month_end-234b58a8"
+  },
+  "gen-cm-month_end-7caaf34c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "91075.14"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-month_end-7caaf34c"
+  },
+  "gen-cm-month_end-908e6029": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "91075.14"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-month_end-908e6029"
+  },
+  "gen-cm-null_empty-ca6b8d98": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-null_empty-ca6b8d98"
+  },
+  "gen-cm-package_state-9ccb4450": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_total": {
+     "$decimal": "91075.14"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-cm-package_state-9ccb4450"
+  },
+  "gen-gg-missing_record-cff8c208": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-missing_record-cff8c208"
+  },
+  "gen-gg-missing_record-f220c70a": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-missing_record-f220c70a"
+  },
+  "gen-gg-numeric_boundary-1139cf9e": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "G2-STANDARD",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-1139cf9e"
+  },
+  "gen-gg-numeric_boundary-16dbdabc": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "G2-SENIOR",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-16dbdabc"
+  },
+  "gen-gg-numeric_boundary-2542f702": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "G2-SENIOR",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-2542f702"
+  },
+  "gen-gg-numeric_boundary-27940b73": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "UNRATED-STANDARD",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-27940b73"
+  },
+  "gen-gg-numeric_boundary-32b6b8ae": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "G3-STANDARD",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-32b6b8ae"
+  },
+  "gen-gg-numeric_boundary-716d188b": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "G1-SENIOR",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-716d188b"
+  },
+  "gen-gg-numeric_boundary-835a116b": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "G3-STANDARD",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-835a116b"
+  },
+  "gen-gg-numeric_boundary-9be1b06f": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "G1-STANDARD",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-9be1b06f"
+  },
+  "gen-gg-numeric_boundary-c625d1fa": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "UNRATED-STANDARD",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-numeric_boundary-c625d1fa"
+  },
+  "gen-gg-text_domain-6e8f8c60": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "G4-STANDARD",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-gg-text_domain-6e8f8c60"
+  },
+  "gen-mp-leap_year-30d65b6d": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "8"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2024-02-29T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2024-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1173"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2024-02-29T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2024-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1175"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2024-02-29T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2024-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1174"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2024-02-29T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2024-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1177"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2024-02-29T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "1"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "206.9"
+       },
+       "pay_month": {
+        "$datetime": "2024-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1176"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2024-02-29T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2024-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1172"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2024-02-29T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2024-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1170"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2024-02-29T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2024-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1171"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-leap_year-30d65b6d"
+  },
+  "gen-mp-leap_year-95e67260": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "11"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1206"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1205"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "908"
+       },
+       "gross_pay": {
+        "$decimal": "7500"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1214"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1207"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1213"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1204"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1209"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "6666.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1212"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1210"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1208"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1211"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-leap_year-95e67260"
+  },
+  "gen-mp-leap_year-a7994bb6": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "10"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1038"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1042"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1037"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1039"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "6666.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1044"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1041"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1036"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1045"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1040"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "29"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1043"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-leap_year-a7994bb6"
+  },
+  "gen-mp-leap_year-ebcb4810": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "11"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "909"
+       },
+       "gross_pay": {
+        "$decimal": "6500"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1236"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1227"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1229"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1230"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1226"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1228"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1235"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1233"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1232"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "6666.67"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1234"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2028-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2028-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1231"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-leap_year-ebcb4810"
+  },
+  "gen-mp-missing_record-d5011805": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-mp-missing_record-d5011805"
+  },
+  "gen-mp-month_end-2f13a354": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "9"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1191"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1188"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1193"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1190"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1189"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1187"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "907"
+       },
+       "gross_pay": {
+        "$decimal": "7500"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1194"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1192"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1186"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-2f13a354"
+  },
+  "gen-mp-month_end-511b66ab": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "10"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1133"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1141"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1138"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1137"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1139"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1132"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "14"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "1944.44"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1140"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1136"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1135"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T23:59:59"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1134"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-511b66ab"
+  },
+  "gen-mp-month_end-5330e1c1": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "8"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2025-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2025-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1506"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2025-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1502"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2025-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1501"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2025-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1505"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2025-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1500"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1504"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1503"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2025-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1507"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-5330e1c1"
+  },
+  "gen-mp-month_end-57d6b8a0": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "10"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1118"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1121"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1116"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1117"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1112"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1119"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1113"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1114"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1115"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-30T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "14"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "1944.44"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1120"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-57d6b8a0"
+  },
+  "gen-mp-month_end-6c32950b": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "8"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2025-07-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2025-07-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1518"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-07-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2025-07-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1521"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-07-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-07-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1520"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-07-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-07-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1519"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-07-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2025-07-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1522"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-07-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2025-07-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1517"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-07-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2025-07-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1516"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-07-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2025-07-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1523"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-6c32950b"
+  },
+  "gen-mp-month_end-7370274b": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "8"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1022"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1026"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1024"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1027"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1025"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1021"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1020"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-02-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "28"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-02-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1023"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-7370274b"
+  },
+  "gen-mp-month_end-7a1f270b": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "8"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2025-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2025-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1486"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2025-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1485"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2025-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1484"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1488"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2025-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1491"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2025-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1490"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1487"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2025-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1489"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-7a1f270b"
+  },
+  "gen-mp-month_end-7fa26361": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "9"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1077"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "4666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1081"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1075"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1078"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1079"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1074"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1080"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1076"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1082"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-7fa26361"
+  },
+  "gen-mp-month_end-8652ca3e": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "10"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1101"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1096"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1092"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "14"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "1944.44"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1100"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1094"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1099"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1093"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1097"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1095"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1098"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-8652ca3e"
+  },
+  "gen-mp-month_end-8a8550d7": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "9"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1061"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1056"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1064"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1057"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1062"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1058"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1059"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "4666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1063"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-04-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-04-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1060"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-8a8550d7"
+  },
+  "gen-mp-month_end-9962719e": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "8"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2025-06-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2025-06-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1468"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-06-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2025-06-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1470"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-06-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2025-06-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1474"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-06-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-06-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1472"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-06-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2025-06-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1473"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-06-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2025-06-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1475"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-06-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-06-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1471"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-06-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2025-06-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1469"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-9962719e"
+  },
+  "gen-mp-month_end-ac2c3e06": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "10"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1571"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1573"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1572"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1574"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1577"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "6666.67"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1576"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1569"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1570"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1568"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-08-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2027-08-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1575"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-ac2c3e06"
+  },
+  "gen-mp-month_end-b1fa379a": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "8"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2025-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2025-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1539"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2025-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1537"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1536"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2025-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1538"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2025-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1533"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2025-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1535"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2025-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1534"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2025-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2025-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1532"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-b1fa379a"
+  },
+  "gen-mp-month_end-cc088f20": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "10"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1550"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1548"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1553"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "6666.67"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1556"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1549"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1555"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1554"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1551"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1557"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2027-11-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2027-11-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1552"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-cc088f20"
+  },
+  "gen-mp-month_end-f7e653a7": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "9"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1155"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1158"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "1"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "150.54"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1159"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1152"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1157"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1160"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1156"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1154"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-03-31T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-03-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1153"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-month_end-f7e653a7"
+  },
+  "gen-mp-null_empty-ad4d5e50": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "0"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-mp-null_empty-ad4d5e50"
+  },
+  "gen-mp-package_state-416d1ba6": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "10"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1292"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1289"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1290"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1297"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1293"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1295"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1294"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "4166.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1296"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1288"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-10-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "31"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-10-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1291"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-package_state-416d1ba6"
+  },
+  "gen-mp-sequence-4ff93479": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {
+    "p_rows_out": {
+     "$decimal": "10"
+    }
+   },
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "101"
+       },
+       "gross_pay": {
+        "$decimal": "22500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1258"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "103"
+       },
+       "gross_pay": {
+        "$decimal": "10666.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1260"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "gross_pay": {
+        "$decimal": "7166.67"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1265"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "111"
+       },
+       "gross_pay": {
+        "$decimal": "10916.73"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1267"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "107"
+       },
+       "gross_pay": {
+        "$decimal": "8500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1264"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1262"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "gross_pay": {
+        "$decimal": "7833.33"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1263"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "14"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "gross_pay": {
+        "$decimal": "1944.44"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1266"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "gross_pay": {
+        "$decimal": "12500"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1259"
+       }
+      },
+      {
+       "created_at": {
+        "$datetime": "2026-09-15T00:00:00"
+       },
+       "days_worked": {
+        "$decimal": "30"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "gross_pay": {
+        "$decimal": "9583.38"
+       },
+       "pay_month": {
+        "$datetime": "2026-09-01T00:00:00"
+       },
+       "run_id": {
+        "$decimal": "1261"
+       }
+      }
+     ],
+     "table": "payroll_runs",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-mp-sequence-4ff93479"
+  },
+  "gen-np-numeric_boundary-02f776f5": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "0"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-02f776f5"
+  },
+  "gen-np-numeric_boundary-1240fe05": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "-9.05"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-1240fe05"
+  },
+  "gen-np-numeric_boundary-337f963f": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "89999999999.99"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-337f963f"
+  },
+  "gen-np-numeric_boundary-3fb5b913": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "0.23"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-3fb5b913"
+  },
+  "gen-np-numeric_boundary-44f1341c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "111.11"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-44f1341c"
+  },
+  "gen-np-numeric_boundary-6cadb915": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "0.14"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-6cadb915"
+  },
+  "gen-np-numeric_boundary-79cab19d": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "1.04"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-79cab19d"
+  },
+  "gen-np-numeric_boundary-831bb686": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "0.05"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-831bb686"
+  },
+  "gen-np-numeric_boundary-90b4e75e": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "11111.11"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-90b4e75e"
+  },
+  "gen-np-numeric_boundary-919e8c96": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "9.05"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-919e8c96"
+  },
+  "gen-np-numeric_boundary-994c277c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "1.85"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-994c277c"
+  },
+  "gen-np-numeric_boundary-9f2e503f": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "-111.11"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-9f2e503f"
+  },
+  "gen-np-numeric_boundary-a810941a": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "899.96"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-a810941a"
+  },
+  "gen-np-numeric_boundary-b60dd639": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "0.41"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-b60dd639"
+  },
+  "gen-np-numeric_boundary-c00ad1fa": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "-0.23"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-c00ad1fa"
+  },
+  "gen-np-numeric_boundary-ca104016": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "2.03"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-ca104016"
+  },
+  "gen-np-numeric_boundary-ea7c368f": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "1.67"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-ea7c368f"
+  },
+  "gen-np-numeric_boundary-f7f74953": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "0.77"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-numeric_boundary-f7f74953"
+  },
+  "gen-np-package_state-792f2aae": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": {
+    "$decimal": "18000"
+   },
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-np-package_state-792f2aae"
+  },
+  "gen-oc-hierarchy-2a9d3fb0": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": [
+    {
+     "depth": {
+      "$decimal": "1"
+     },
+     "emp_id": {
+      "$decimal": "101"
+     },
+     "full_name": "Asha Verma",
+     "manager_id": null,
+     "reporting_line": " > Asha Verma"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "102"
+     },
+     "full_name": "Rohan Mehta",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "103"
+     },
+     "full_name": "Priya Nair",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "104"
+     },
+     "full_name": "Karan Singh",
+     "manager_id": {
+      "$decimal": "102"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "105"
+     },
+     "full_name": "Neha Gupta",
+     "manager_id": {
+      "$decimal": "102"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Neha Gupta"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "106"
+     },
+     "full_name": "Vikram Rao",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Vikram Rao"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "107"
+     },
+     "full_name": "Sana Khan",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Sana Khan"
+    },
+    {
+     "depth": {
+      "$decimal": "4"
+     },
+     "emp_id": {
+      "$decimal": "108"
+     },
+     "full_name": "Arjun Das",
+     "manager_id": {
+      "$decimal": "104"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh > Arjun Das"
+    },
+    {
+     "depth": {
+      "$decimal": "4"
+     },
+     "emp_id": {
+      "$decimal": "109"
+     },
+     "full_name": "Meera Iyer",
+     "manager_id": {
+      "$decimal": "104"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh > Meera Iyer"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "110"
+     },
+     "full_name": "Dev Malhotra",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Dev Malhotra"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "111"
+     },
+     "full_name": "Ira Kapoor",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Ira Kapoor"
+    },
+    {
+     "depth": {
+      "$decimal": "1"
+     },
+     "emp_id": {
+      "$decimal": "910"
+     },
+     "full_name": "Root Two",
+     "manager_id": null,
+     "reporting_line": " > Root Two"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "911"
+     },
+     "full_name": "Under Root Two",
+     "manager_id": {
+      "$decimal": "910"
+     },
+     "reporting_line": " > Root Two > Under Root Two"
+    }
+   ],
+   "table_diffs": [],
+   "test_id": "gen-oc-hierarchy-2a9d3fb0"
+  },
+  "gen-oc-hierarchy-574ef57a": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": [
+    {
+     "depth": {
+      "$decimal": "1"
+     },
+     "emp_id": {
+      "$decimal": "101"
+     },
+     "full_name": "Asha Verma",
+     "manager_id": null,
+     "reporting_line": " > Asha Verma"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "102"
+     },
+     "full_name": "Rohan Mehta",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "103"
+     },
+     "full_name": "Priya Nair",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "104"
+     },
+     "full_name": "Karan Singh",
+     "manager_id": {
+      "$decimal": "102"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "105"
+     },
+     "full_name": "Neha Gupta",
+     "manager_id": {
+      "$decimal": "102"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Neha Gupta"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "106"
+     },
+     "full_name": "Vikram Rao",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Vikram Rao"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "107"
+     },
+     "full_name": "Sana Khan",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Sana Khan"
+    },
+    {
+     "depth": {
+      "$decimal": "4"
+     },
+     "emp_id": {
+      "$decimal": "108"
+     },
+     "full_name": "Arjun Das",
+     "manager_id": {
+      "$decimal": "104"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh > Arjun Das"
+    },
+    {
+     "depth": {
+      "$decimal": "4"
+     },
+     "emp_id": {
+      "$decimal": "109"
+     },
+     "full_name": "Meera Iyer",
+     "manager_id": {
+      "$decimal": "104"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh > Meera Iyer"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "110"
+     },
+     "full_name": "Dev Malhotra",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Dev Malhotra"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "111"
+     },
+     "full_name": "Ira Kapoor",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Ira Kapoor"
+    },
+    {
+     "depth": {
+      "$decimal": "5"
+     },
+     "emp_id": {
+      "$decimal": "912"
+     },
+     "full_name": "Chain Five",
+     "manager_id": {
+      "$decimal": "108"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh > Arjun Das > Chain Five"
+    },
+    {
+     "depth": {
+      "$decimal": "6"
+     },
+     "emp_id": {
+      "$decimal": "913"
+     },
+     "full_name": "Chain Six",
+     "manager_id": {
+      "$decimal": "912"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh > Arjun Das > Chain Five > Chain Six"
+    }
+   ],
+   "table_diffs": [],
+   "test_id": "gen-oc-hierarchy-574ef57a"
+  },
+  "gen-oc-hierarchy-b44f1418": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": [
+    {
+     "depth": {
+      "$decimal": "1"
+     },
+     "emp_id": {
+      "$decimal": "101"
+     },
+     "full_name": "Asha Verma",
+     "manager_id": null,
+     "reporting_line": " > Asha Verma"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "102"
+     },
+     "full_name": "Rohan Mehta",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "103"
+     },
+     "full_name": "Priya Nair",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "104"
+     },
+     "full_name": "Karan Singh",
+     "manager_id": {
+      "$decimal": "102"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "105"
+     },
+     "full_name": "Neha Gupta",
+     "manager_id": {
+      "$decimal": "102"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Neha Gupta"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "106"
+     },
+     "full_name": "Vikram Rao",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Vikram Rao"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "107"
+     },
+     "full_name": "Sana Khan",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Sana Khan"
+    },
+    {
+     "depth": {
+      "$decimal": "4"
+     },
+     "emp_id": {
+      "$decimal": "108"
+     },
+     "full_name": "Arjun Das",
+     "manager_id": {
+      "$decimal": "104"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh > Arjun Das"
+    },
+    {
+     "depth": {
+      "$decimal": "4"
+     },
+     "emp_id": {
+      "$decimal": "109"
+     },
+     "full_name": "Meera Iyer",
+     "manager_id": {
+      "$decimal": "104"
+     },
+     "reporting_line": " > Asha Verma > Rohan Mehta > Karan Singh > Meera Iyer"
+    },
+    {
+     "depth": {
+      "$decimal": "2"
+     },
+     "emp_id": {
+      "$decimal": "110"
+     },
+     "full_name": "Dev Malhotra",
+     "manager_id": {
+      "$decimal": "101"
+     },
+     "reporting_line": " > Asha Verma > Dev Malhotra"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "111"
+     },
+     "full_name": "Ira Kapoor",
+     "manager_id": {
+      "$decimal": "103"
+     },
+     "reporting_line": " > Asha Verma > Priya Nair > Ira Kapoor"
+    },
+    {
+     "depth": {
+      "$decimal": "3"
+     },
+     "emp_id": {
+      "$decimal": "915"
+     },
+     "full_name": "Reports To Dev",
+     "manager_id": {
+      "$decimal": "110"
+     },
+     "reporting_line": " > Asha Verma > Dev Malhotra > Reports To Dev"
+    }
+   ],
+   "table_diffs": [],
+   "test_id": "gen-oc-hierarchy-b44f1418"
+  },
+  "gen-oc-hierarchy-cef703cf": {
+   "engine": "oracle",
+   "error": {
+    "code": "ORA-30004",
+    "context": null,
+    "message": "ORA-30004: when using SYS_CONNECT_BY_PATH function, cannot have separator as part of column value"
+   },
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-oc-hierarchy-cef703cf"
+  },
+  "gen-te-duplicate_record-b6e7c18f": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-duplicate_record-b6e7c18f"
+  },
+  "gen-te-duplicate_record-d2b822d0": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair, Tia Bose, Om Rana",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-duplicate_record-d2b822d0"
+  },
+  "gen-te-duplicate_record-db61ed19": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair, Tia Bose",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-duplicate_record-db61ed19"
+  },
+  "gen-te-missing_record-a0eb98b0": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-missing_record-a0eb98b0"
+  },
+  "gen-te-missing_record-ab8b601c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-missing_record-ab8b601c"
+  },
+  "gen-te-rownum_limit-00b00baf": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Asha Verma",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-00b00baf"
+  },
+  "gen-te-rownum_limit-010e79c3": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair, Sana Khan, Vikram Rao",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-010e79c3"
+  },
+  "gen-te-rownum_limit-146354f6": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Rohan Mehta, Karan Singh",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-146354f6"
+  },
+  "gen-te-rownum_limit-2683b35f": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-2683b35f"
+  },
+  "gen-te-rownum_limit-28b86d8a": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Asha Verma",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-28b86d8a"
+  },
+  "gen-te-rownum_limit-2d3cd7f4": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Rohan Mehta, Karan Singh, Neha Gupta",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-2d3cd7f4"
+  },
+  "gen-te-rownum_limit-30a7d001": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Asha Verma",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-30a7d001"
+  },
+  "gen-te-rownum_limit-44064b42": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair, Sana Khan",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-44064b42"
+  },
+  "gen-te-rownum_limit-4a38d68d": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Rohan Mehta",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-4a38d68d"
+  },
+  "gen-te-rownum_limit-7bad2152": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair, Sana Khan, Vikram Rao",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-7bad2152"
+  },
+  "gen-te-rownum_limit-85627d7c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Rohan Mehta, Karan Singh, Neha Gupta, Arjun Das, Meera Iyer",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-85627d7c"
+  },
+  "gen-te-rownum_limit-8b212ac2": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-8b212ac2"
+  },
+  "gen-te-rownum_limit-936dab6c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Rohan Mehta, Karan Singh, Neha Gupta, Arjun Das, Meera Iyer",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-936dab6c"
+  },
+  "gen-te-rownum_limit-aebcf9d4": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-aebcf9d4"
+  },
+  "gen-te-rownum_limit-b6aad020": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Rohan Mehta, Karan Singh, Neha Gupta, Arjun Das, Meera Iyer",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-b6aad020"
+  },
+  "gen-te-rownum_limit-c58a99a9": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Asha Verma",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-c58a99a9"
+  },
+  "gen-te-rownum_limit-cea49ee7": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-cea49ee7"
+  },
+  "gen-te-rownum_limit-d16d7a28": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Ira Kapoor, Priya Nair, Sana Khan, Vikram Rao",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-d16d7a28"
+  },
+  "gen-te-rownum_limit-d94c50a6": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-d94c50a6"
+  },
+  "gen-te-rownum_limit-ddc41640": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-ddc41640"
+  },
+  "gen-te-rownum_limit-e4a9f59c": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-e4a9f59c"
+  },
+  "gen-te-rownum_limit-e5ecc366": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": "Rohan Mehta, Karan Singh, Neha Gupta, Arjun Das",
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-e5ecc366"
+  },
+  "gen-te-rownum_limit-ee98312f": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-ee98312f"
+  },
+  "gen-te-rownum_limit-f96121fc": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-te-rownum_limit-f96121fc"
+  },
+  "gen-tr-trigger_firing-280f5210": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "93500.55"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "neha@pv.test",
+        "emp_id": {
+         "$decimal": "105"
+        },
+        "full_name": "Neha Gupta",
+        "hire_date": {
+         "$datetime": "2022-11-30T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "C",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "85000.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "neha@pv.test",
+        "emp_id": {
+         "$decimal": "105"
+        },
+        "full_name": "Neha Gupta",
+        "hire_date": {
+         "$datetime": "2022-11-30T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "C",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "105"
+        }
+       }
+      },
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "61600"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "arjun@pv.test",
+        "emp_id": {
+         "$decimal": "108"
+        },
+        "full_name": "Arjun Das",
+        "hire_date": {
+         "$datetime": "2026-03-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "56000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "arjun@pv.test",
+        "emp_id": {
+         "$decimal": "108"
+        },
+        "full_name": "Arjun Das",
+        "hire_date": {
+         "$datetime": "2026-03-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "108"
+        }
+       }
+      },
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "93500.55"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "85000.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "104"
+        }
+       }
+      },
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "55000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": null,
+        "emp_id": {
+         "$decimal": "109"
+        },
+        "full_name": "Meera Iyer",
+        "hire_date": {
+         "$datetime": "2026-09-17T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "50000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": null,
+        "emp_id": {
+         "$decimal": "109"
+        },
+        "full_name": "Meera Iyer",
+        "hire_date": {
+         "$datetime": "2026-09-17T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "104"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "109"
+        }
+       }
+      },
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "132000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "rohan@pv.test",
+        "emp_id": {
+         "$decimal": "102"
+        },
+        "full_name": "Rohan Mehta",
+        "hire_date": {
+         "$datetime": "2018-06-01T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "101"
+        },
+        "perf_rating": "A",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "120000"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "rohan@pv.test",
+        "emp_id": {
+         "$decimal": "102"
+        },
+        "full_name": "Rohan Mehta",
+        "hire_date": {
+         "$datetime": "2018-06-01T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "101"
+        },
+        "perf_rating": "A",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "102"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "15"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "new_salary": {
+        "$decimal": "93500.55"
+       },
+       "old_salary": {
+        "$decimal": "85000.5"
+       }
+      },
+      {
+       "audit_id": {
+        "$decimal": "17"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "108"
+       },
+       "new_salary": {
+        "$decimal": "61600"
+       },
+       "old_salary": {
+        "$decimal": "56000"
+       }
+      },
+      {
+       "audit_id": {
+        "$decimal": "16"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "105"
+       },
+       "new_salary": {
+        "$decimal": "93500.55"
+       },
+       "old_salary": {
+        "$decimal": "85000.5"
+       }
+      },
+      {
+       "audit_id": {
+        "$decimal": "18"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "109"
+       },
+       "new_salary": {
+        "$decimal": "55000"
+       },
+       "old_salary": {
+        "$decimal": "50000"
+       }
+      },
+      {
+       "audit_id": {
+        "$decimal": "14"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "102"
+       },
+       "new_salary": {
+        "$decimal": "132000"
+       },
+       "old_salary": {
+        "$decimal": "120000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-tr-trigger_firing-280f5210"
+  },
+  "gen-tr-trigger_firing-34a46a53": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "64000.01"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "vikram@pv.test",
+        "emp_id": {
+         "$decimal": "106"
+        },
+        "full_name": "Vikram Rao",
+        "hire_date": {
+         "$datetime": "2023-01-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "64000"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "vikram@pv.test",
+        "emp_id": {
+         "$decimal": "106"
+        },
+        "full_name": "Vikram Rao",
+        "hire_date": {
+         "$datetime": "2023-01-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "106"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "24"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "new_salary": {
+        "$decimal": "64000.01"
+       },
+       "old_salary": {
+        "$decimal": "64000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-tr-trigger_firing-34a46a53"
+  },
+  "gen-tr-trigger_firing-3f4ac15c": {
+   "engine": "oracle",
+   "error": {
+    "code": "ORA-01407",
+    "context": null,
+    "message": "ORA-01407: cannot update (\"LEGACY\".\"EMPLOYEES\".\"BASE_SALARY\") to NULL"
+   },
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-tr-trigger_firing-3f4ac15c"
+  },
+  "gen-tr-trigger_firing-4059e18a": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "64000"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "vikram.rao@pv.test",
+        "emp_id": {
+         "$decimal": "106"
+        },
+        "full_name": "Vikram Rao",
+        "hire_date": {
+         "$datetime": "2023-01-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "64000"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "vikram@pv.test",
+        "emp_id": {
+         "$decimal": "106"
+        },
+        "full_name": "Vikram Rao",
+        "hire_date": {
+         "$datetime": "2023-01-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "106"
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "test_id": "gen-tr-trigger_firing-4059e18a"
+  },
+  "gen-tr-trigger_firing-997a9f8e": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "85425.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "85000.5"
+        },
+        "dept_id": {
+         "$decimal": "20"
+        },
+        "email": "karan@pv.test",
+        "emp_id": {
+         "$decimal": "104"
+        },
+        "full_name": "Karan Singh",
+        "hire_date": {
+         "$datetime": "2021-07-19T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "102"
+        },
+        "perf_rating": "B",
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "104"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "28"
+       },
+       "change_type": "RAISE",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "104"
+       },
+       "new_salary": {
+        "$decimal": "85425.5"
+       },
+       "old_salary": {
+        "$decimal": "85000.5"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-tr-trigger_firing-997a9f8e"
+  },
+  "gen-tr-trigger_firing-a13750c0": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [
+    {
+     "deleted": [],
+     "inserted": [],
+     "table": "employees",
+     "updated": [
+      {
+       "after": {
+        "base_salary": {
+         "$decimal": "63999.99"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "vikram@pv.test",
+        "emp_id": {
+         "$decimal": "106"
+        },
+        "full_name": "Vikram Rao",
+        "hire_date": {
+         "$datetime": "2023-01-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "before": {
+        "base_salary": {
+         "$decimal": "64000"
+        },
+        "dept_id": {
+         "$decimal": "30"
+        },
+        "email": "vikram@pv.test",
+        "emp_id": {
+         "$decimal": "106"
+        },
+        "full_name": "Vikram Rao",
+        "hire_date": {
+         "$datetime": "2023-01-31T00:00:00"
+        },
+        "manager_id": {
+         "$decimal": "103"
+        },
+        "perf_rating": null,
+        "status": "ACTIVE"
+       },
+       "key": {
+        "emp_id": {
+         "$decimal": "106"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "deleted": [],
+     "inserted": [
+      {
+       "audit_id": {
+        "$decimal": "26"
+       },
+       "change_type": "CUT",
+       "changed_on": {
+        "$datetime": "2026-11-16T00:00:00"
+       },
+       "emp_id": {
+        "$decimal": "106"
+       },
+       "new_salary": {
+        "$decimal": "63999.99"
+       },
+       "old_salary": {
+        "$decimal": "64000"
+       }
+      }
+     ],
+     "table": "salary_audit",
+     "updated": []
+    }
+   ],
+   "test_id": "gen-tr-trigger_firing-a13750c0"
+  },
+  "gen-tr-trigger_firing-f06d3921": {
+   "engine": "oracle",
+   "error": null,
+   "out_params": {},
+   "return_value": null,
+   "rows": null,
+   "table_diffs": [],
+   "test_id": "gen-tr-trigger_firing-f06d3921"
+  }
+ }
+}

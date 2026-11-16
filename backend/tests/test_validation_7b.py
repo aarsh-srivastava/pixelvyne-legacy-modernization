@@ -59,8 +59,8 @@ def case(test_id: str, **changes) -> TestCase:
 
 # --- 1. contract 0.5 ---------------------------------------------------------------------
 
-def test_contract_is_0_5_and_the_answer_key_is_complete():
-    assert CONTRACT_VERSION == "0.5"
+def test_contract_version_and_the_answer_key_is_complete():
+    assert CONTRACT_VERSION == "0.6"  # step 7c added optional fields; the 0.5 fields are unchanged
     assert len(ALL_CASES) == 29 and len(GOLDEN_TESTS) == 9  # 8 logical objects; payroll_pkg has 2 members
     assert set(CASE) == set(ORACLE_EXPECTED)
     assert all(c.origin == "golden" for c in ALL_CASES)
@@ -106,6 +106,14 @@ def test_the_golden_actions_are_the_trusted_ones():
         "UPDATE employees SET base_salary = 70000 WHERE emp_id = 106",
         "UPDATE employees SET base_salary = 60000 WHERE emp_id = 106",
         "UPDATE employees SET base_salary = base_salary WHERE emp_id = 106",
+        # step 7c (D-7c.4): the registered rule actions in edge_catalogue.TRIGGER_ACTIONS, nothing else
+        "UPDATE employees SET base_salary = base_salary * 1.1 WHERE dept_id = 20",
+        "UPDATE employees SET email = 'vikram.rao@pv.test' WHERE emp_id = 106",
+        "UPDATE employees SET base_salary = base_salary + 0.01 WHERE emp_id = 106",
+        "UPDATE employees SET base_salary = base_salary - 0.01 WHERE emp_id = 106",
+        "UPDATE employees SET base_salary = 64000 WHERE emp_id = 106",
+        "UPDATE employees SET base_salary = base_salary * 1.005 WHERE emp_id = 104",
+        "UPDATE employees SET base_salary = NULL WHERE emp_id = 106",
     }
 
 

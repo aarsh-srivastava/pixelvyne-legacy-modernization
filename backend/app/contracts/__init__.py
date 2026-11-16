@@ -22,6 +22,7 @@ from app.contracts.models import (
     ExecutionResult,
     FailureReport,
     FieldDiff,
+    GenerationInfo,
     IRObject,
     ObjectType,
     Param,
@@ -40,7 +41,7 @@ from app.contracts.models import (
 
 __all__ = [
     "Analyzer", "Converter", "CONTRACT_VERSION", "ConversionResult", "ConversionTool",
-    "ExecutionError", "ExecutionResult", "FailureReport", "FieldDiff", "IRObject",
+    "ExecutionError", "ExecutionResult", "FailureReport", "FieldDiff", "GenerationInfo", "IRObject",
     "ObjectType", "Param", "ParamMode", "PreviousAttempt", "RepairContext", "SetupCall", "TableDiff",
     "TestCase", "TestOutcome",
     "TestStatus", "TriggerInfo", "ValidationResult", "ValidationStatus",

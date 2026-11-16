@@ -21,7 +21,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.contracts.object_ids import normalize_identifier, parse_object_id
 
-CONTRACT_VERSION = "0.5"   # 0.5: TestCase.setup/action/order_by; 0.4: RepairContext, failure_code; 0.3: .model
+# 0.6: TestCase.generation, ExecutionError.context; 0.5: TestCase.setup/action/order_by;
+# 0.4: RepairContext, failure_code; 0.3: .model
+CONTRACT_VERSION = "0.6"
 
 
 # ---------------------------------------------------------------- enums
@@ -178,6 +180,23 @@ class SetupCall(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict)          # IN params by name
 
 
+class GenerationInfo(BaseModel):
+    """How a generated test case was made (contract 0.6, step 7c). Golden tests have none.
+
+    Enough to regenerate the case exactly: the generator version and seed, plus what it is
+    for. ``in_contract`` is False when the inputs are outside what EXPECTED.md promises
+    (e.g. a fractional percentage); such cases are still compared against Oracle, but their
+    differences are reported separately and are not fixed without a separate decision.
+    """
+
+    generator_version: str
+    seed: int
+    category: str                      # e.g. "null_empty", "month_end", "rownum_limit"
+    rule: str | None = None            # translator rule targeted, e.g. "R9"
+    in_contract: bool = True
+    relation: str | None = None        # metamorphic relation group this case belongs to
+
+
 class TestCase(BaseModel):
     """One behavioural test, run on both engines and compared.
 
@@ -202,6 +221,7 @@ class TestCase(BaseModel):
     setup: list[SetupCall] = Field(default_factory=list)          # (0.5) calls with inputs, run first
     action: str | None = None          # (0.5) one INSERT/UPDATE/DELETE that fires a trigger; trusted tests only
     order_by: list[str] = Field(default_factory=list)            # (0.5) view tests: rows compared in this order
+    generation: GenerationInfo | None = None                    # (0.6) generated cases only (step 7c)
 
     @field_validator("order_by")
     @classmethod
@@ -219,6 +239,9 @@ class TestCase(BaseModel):
 class ExecutionError(BaseModel):
     code: str | None = None            # e.g. "ORA-01403", "P0002"
     message: str
+    # (0.6) where it was raised: Oracle's ORA-06512 lines, PostgreSQL's PL/pgSQL context.
+    # Evidence for triage (raised inside the object or at the call); never compared.
+    context: str | None = None
 
 
 class TableDiff(BaseModel):

@@ -23,7 +23,8 @@ from app.contracts.object_ids import OBJECT_KINDS
 
 
 def test_contract_version_is_bumped():
-    assert CONTRACT_VERSION == "0.5"  # 0.5: TestCase.setup/action/order_by; 0.4: RepairContext; 0.3: model
+    # 0.6: TestCase.generation; 0.5: TestCase.setup/action/order_by; 0.4: RepairContext; 0.3: model
+    assert CONTRACT_VERSION == "0.6"
 
 
 def test_kinds_stay_in_step_with_object_type():

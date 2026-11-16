@@ -7,9 +7,10 @@ every check below passes, independently of where the test case came from:
 
 1. **Trusted origin.** ``origin`` is ``golden`` or ``rule``, never ``llm``.
 2. **Defined in our own code.** The statement is one of ``trusted_actions()``: the actions
-   of the golden tests in ``golden_tests.py``. A test case loaded from JSON, an upload or an
-   LLM cannot introduce a new statement by setting ``origin``; at most it can reuse one of
-   ours. (Rule-generated tests, step 7c, will register theirs here in code.)
+   of the golden tests in ``golden_tests.py`` and the registered rule actions in
+   ``edge_catalogue.TRIGGER_ACTIONS`` (step 7c, D-7c.4). A test case loaded from JSON, an
+   upload or an LLM cannot introduce a new statement by setting ``origin``; at most it can
+   reuse one of ours.
 3. **One plain DML statement.** It starts with INSERT, UPDATE or DELETE; there is no second
    statement, no comment, and no DDL, transaction-control, call or privilege keyword
    outside string literals.
@@ -43,10 +44,13 @@ class UnsafeAction(ValueError):
 
 @lru_cache(maxsize=1)
 def trusted_actions() -> frozenset[str]:
-    """The action statements defined in this repository's golden tests."""
-    from app.validation.golden_tests import GOLDEN_TESTS  # late import: golden_tests imports contracts only
+    """The action statements defined in this repository: golden tests and registered rule actions."""
+    from app.validation.edge_catalogue import TRIGGER_ACTIONS  # late imports: both import contracts only
+    from app.validation.golden_tests import GOLDEN_TESTS
 
-    return frozenset(_normalise(c.action) for cases in GOLDEN_TESTS.values() for c in cases if c.action)
+    golden = {_normalise(c.action) for cases in GOLDEN_TESTS.values() for c in cases if c.action}
+    registered = {_normalise(statement) for statement, _what, _in_contract in TRIGGER_ACTIONS.values()}
+    return frozenset(golden | registered)
 
 
 def _normalise(statement: str) -> str:
