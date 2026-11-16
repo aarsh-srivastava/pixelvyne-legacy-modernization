@@ -113,6 +113,7 @@ def main() -> int:
           "Run scripts/seed_target.py to reset it.\n")
 
     if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps([r.model_dump(mode="json") for r in runs], indent=2), encoding="utf-8")
         print(f"Wrote {args.json}")
     return 0 if all(r.outcome != RepairOutcome.NEEDS_HUMAN for r in runs) else 1
