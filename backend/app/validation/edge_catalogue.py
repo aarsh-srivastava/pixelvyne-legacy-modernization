@@ -134,9 +134,8 @@ ACCEPTED_DIFFERENCES: dict[str, tuple[str, str]] = {}
 KNOWN_NON_PASSES: dict[str, tuple[str, str]] = {
     # calc_bonus(102, 'AB'): ORA-06502 at CALC_BONUS line 15 vs 22001 at the same assignment (H2).
     "gen-cb-text_domain-d9209f20": ("error_map_gap", "candidate equivalence value_error/value_too_long; D-7c.5"),
-    # A NULL salary: ORA-01407 (unmapped) vs 23502, both at the same UPDATE of the NOT NULL column.
-    "gen-ar-null_empty-15a1ddde": ("error_map_gap", "ORA-01407 unmapped; proposed mapping to not_null_violation"),
-    "gen-tr-trigger_firing-3f4ac15c": ("error_map_gap", "ORA-01407 unmapped; proposed mapping to not_null_violation"),
+    # (gen-ar-null_empty-15a1ddde and gen-tr-trigger_firing-3f4ac15c, ORA-01407 vs 23502, pass since
+    # ORA-01407 was mapped to not_null_violation in errors.py.)
     # org_chart with a name containing ' > ': Oracle raises ORA-30004 (SYS_CONNECT_BY_PATH separator in a
     # value); the recorded Gemini view returns rows. Gemini route; reported, not fixed in 7c.
     "gen-oc-hierarchy-cef703cf": ("translation_defect", "DEF-7c-1: org_chart separator in a name (ORA-30004)"),

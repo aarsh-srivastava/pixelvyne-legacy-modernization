@@ -104,6 +104,24 @@ def test_user_raised_errors_match_across_engines():
     assert categorize("postgres", ExecutionError(code="P0001", message="y")) == "user_raised"
 
 
+def test_ora_01407_update_to_null_matches_postgresql_not_null_violation():
+    """Setting a NOT NULL column to NULL in an UPDATE: ORA-01407 in Oracle, 23502 in PostgreSQL.
+
+    Same constraint, same statement, nothing changed on either side (7c evidence: apply_raise(104, NULL)
+    and the registered `SET base_salary = NULL` action). ORA-01400 is the INSERT counterpart.
+    """
+    ora_update = ExecutionError(code="ORA-01407", message='ORA-01407: cannot update ("LEGACY"."EMPLOYEES".'
+                                                          '"BASE_SALARY") to NULL')
+    pg = ExecutionError(code="23502", message='null value in column "base_salary" violates not-null constraint')
+    assert categorize("oracle", ora_update) == categorize("postgres", pg) == "not_null_violation"
+    assert categorize("oracle", ExecutionError(code="ORA-01400", message="x")) == "not_null_violation"
+    assert compare(CASE, result("oracle", error=ora_update), result("postgres", error=pg)).status == TestStatus.PASSED
+    # the mapping is specific: a different PostgreSQL failure is still a difference
+    other = ExecutionError(code="23514", message="check constraint")
+    differs = compare(CASE, result("oracle", error=ora_update), result("postgres", error=other))
+    assert differs.status == TestStatus.FAILED
+
+
 def test_table_side_effects_must_match():
     audit = TableDiff(table="salary_audit", inserted=[{"audit_id": 7, "emp_id": 104, "change_type": "RAISE"}])
     outcome = compare(CASE, result("oracle", table_diffs=[audit]), result("postgres"),

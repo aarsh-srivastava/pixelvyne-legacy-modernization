@@ -38,6 +38,7 @@ from app.validation.edge_catalogue import (
     TRIGGER_ACTIONS,
     core_specs,
 )
+from app.validation.errors import ORACLE_CATEGORIES
 from app.validation.fixtures import ALLOWED_COLUMNS, UnsafeFixture, checked_fixtures, oracle_insert
 from app.validation.golden_tests import (
     CALC_BONUS,
@@ -316,8 +317,10 @@ def test_invalid_input_only_when_oracle_rejected_it_at_the_call():
 
 
 def test_unmapped_errors_are_an_error_map_gap_not_a_defect():
-    t = classify(_outcome(_result("oracle", "ORA-01407"), _result("postgres", "23502")))
-    assert t.failure_class is triage.FailureClass.ERROR_MAP_GAP and "other:ORA-01407" in t.reason
+    # ORA-01451 is deliberately one that errors.py does not map (ORA-01407 was the example until it was mapped)
+    assert "ORA-01451" not in ORACLE_CATEGORIES
+    t = classify(_outcome(_result("oracle", "ORA-01451"), _result("postgres", "23502")))
+    assert t.failure_class is triage.FailureClass.ERROR_MAP_GAP and "other:ORA-01451" in t.reason
 
 
 def test_mapped_but_different_errors_are_a_defect_unless_under_review():

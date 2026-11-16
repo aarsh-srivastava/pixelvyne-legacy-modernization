@@ -23,7 +23,8 @@ ORACLE_CATEGORIES = {
     "ORA-00001": "unique_violation",
     "ORA-02291": "foreign_key_violation",
     "ORA-02292": "foreign_key_violation",
-    "ORA-01400": "not_null_violation",
+    "ORA-01400": "not_null_violation",   # INSERT of NULL into a NOT NULL column
+    "ORA-01407": "not_null_violation",   # UPDATE of a NOT NULL column to NULL (evidence: step 7c)
     "ORA-02290": "check_violation",
     "ORA-01476": "division_by_zero",
     "ORA-12899": "value_too_long",
