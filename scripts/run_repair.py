@@ -34,23 +34,42 @@ Exit codes (both converters; the last line printed says which and why):
     1  NEEDS HUMAN     at least one object stopped: tests still fail, no repair route, the
                        harness could not judge it, or it needs Gemini (takes precedence over 3)
     2  NOT RUN         bad arguments, unknown object, --gemini without a key, or a target
-                       not prepared for the real converter; nothing was converted
+                       not prepared for the real converter (the pre-flight check below);
+                       nothing was converted and Gemini was not called
 Only 0 means "fully passed, nothing outstanding". 3 is not a failure, but it is not done.
+
+Pre-flight (--converter real, approved by Aarsh on 17 Nov as F1): before the converter is built,
+read-only catalogue checks confirm the deployer and runner connections really run as pv_deployer
+and pv_runner on the database named by TARGET_DATABASE_NAME (default target; configured on its own,
+never taken from the connection URLs), every sample table and sequence exists in public, both
+roles hold the rights setup_target_roles.py grants (USAGE and CREATE checked separately), the
+pv_compat helper is installed and usable, and, with --gemini, that Redis answers. Any failure
+prints every problem with its fix and exits 2: no object is converted, no Gemini call is made.
+
+With --gemini, each object's Gemini calls (and cache hits) are listed after the summary, and
+with --json they are also written next to the report as <name>.calls.json: model, try, elapsed
+time, outcome (ok, http_504, client_timeout, ...), timeout, prompt and response sizes, cache
+status. Never prompt or response text, keys or URLs.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import sys
+from dataclasses import asdict
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
 
 from app.config import settings  # noqa: E402
 from app.contracts import ObjectType  # noqa: E402
+from app.migration.compat import COMPAT_SCHEMA, PATH_CHECK_FUNCTION  # noqa: E402
+from app.migration.target_roles import DEPLOYER_ROLE, RUNNER_ROLE  # noqa: E402
 from app.orchestration.repair_loop import (  # noqa: E402
     RepairDeps,
     RepairOutcome,
@@ -126,15 +145,151 @@ def show(run, prepared: int | None) -> None:
     print(f"  -> {OUTCOME_LABEL[run.outcome]}: {run.reason}")
 
 
+#: The one routine pv_deployer may find but not own: the platform helper (step 7d), exactly this
+#: signature and admin-owned. Anything else in pv_compat, or any other overload, still counts.
+PLATFORM_HELPER_ARGTYPES = "25 16"   # (text, boolean) as pg_proc.proargtypes
+
+
 def foreign_routines(conn) -> list[str]:
-    """Routines, views or triggers in the target that pv_deployer does not own (e.g. seeded stand-ins)."""
+    """Routines, views or triggers in the target that pv_deployer does not own (e.g. seeded stand-ins).
+
+    Only the approved platform helper is not counted, and only while a superuser owns it; the
+    pre-flight checks the helper separately. Routines are reported as schema.name(argument types).
+    """
     rows = conn.execute(
-        "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
-        "WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND pg_get_userbyid(p.proowner) <> 'pv_deployer' "
-        "UNION ALL SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "SELECT n.nspname || '.' || p.proname || '(' || oidvectortypes(p.proargtypes) || ')' "
+        "  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_roles r ON r.oid = p.proowner "
+        " WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND r.rolname <> 'pv_deployer' "
+        "   AND NOT (n.nspname = %s AND p.proname = %s AND p.proargtypes = %s::oidvector AND r.rolsuper)",
+        (COMPAT_SCHEMA, PATH_CHECK_FUNCTION, PLATFORM_HELPER_ARGTYPES),
+    ).fetchall()
+    found = [r[0] for r in rows]
+    views = conn.execute(
+        "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
         "WHERE c.relkind = 'v' AND n.nspname = 'public' AND pg_get_userbyid(c.relowner) <> 'pv_deployer'"
     ).fetchall()
-    return sorted(r[0] for r in rows)
+    return sorted(found + [f"public.{v[0]} (view)" for v in views])
+
+
+# What setup_target_roles.py grants (target_roles.ensure_roles); the pre-flight checks exactly these.
+DEPLOYER_TABLE_PRIVILEGES = ("SELECT", "REFERENCES", "TRIGGER")
+RUNNER_TABLE_PRIVILEGES = ("SELECT", "INSERT", "UPDATE", "DELETE")
+RUNNER_SEQUENCE_PRIVILEGES = ("USAGE", "SELECT")
+RESET_HINT = "run scripts/seed_target.py --schema-only, then scripts/setup_target_roles.py"
+ROLES_HINT = "run scripts/setup_target_roles.py"
+
+
+def _missing(conn, role: str, kind: str, found: dict[str, int], privileges: tuple[str, ...]) -> list[str]:
+    """'name (PRIV, PRIV)' for each existing public table or sequence the role lacks privileges on.
+
+    By OID, so the check works even when the connection itself has no USAGE on public (a name
+    would have to be looked up in the schema first, which needs that USAGE)."""
+    out = []
+    for name, oid in sorted(found.items()):
+        lacking = [p for p in privileges
+                   if not conn.execute(f"SELECT has_{kind}_privilege(%s, %s::oid, %s)", (role, oid, p)).fetchone()[0]]
+        if lacking:
+            out.append(f"{name} ({', '.join(lacking)})")
+    return out
+
+
+def preflight(deployer, runner, *, database: str, tables: list[str], sequences: list[str]) -> list[str]:
+    """Every reason the target is not ready for the real converter; empty when it is.
+
+    Read-only catalogue queries (both connections are rolled back afterwards). Called before
+    the converter or Gemini exists, so a failure here costs no Gemini call.
+    """
+    problems: list[str] = []
+    try:
+        for conn, role, variable in ((deployer, DEPLOYER_ROLE, "TARGET_DEPLOYER_URL"),
+                                     (runner, RUNNER_ROLE, "TARGET_RUNNER_URL")):
+            user, db = conn.execute("SELECT current_user, current_database()").fetchone()
+            if user != role:
+                problems.append(f"the {role} connection runs as {user}, not {role}: check {variable}")
+            if db != database:
+                problems.append(f"the {role} connection is on database {db}, not {database}: check {variable} "
+                                "and TARGET_DATABASE_NAME")
+
+        rows = deployer.execute(
+            "SELECT c.relname, c.relkind, c.oid FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'public' AND c.relname = ANY(%s)", (tables + sequences,)).fetchall()
+        found_tables = {n: oid for n, k, oid in rows if k in ("r", "p") and n in tables}
+        found_sequences = {n: oid for n, k, oid in rows if k == "S" and n in sequences}
+        for kind, wanted, found in (("table", tables, found_tables), ("sequence", sequences, found_sequences)):
+            absent = sorted(set(wanted) - set(found))
+            if absent:
+                problems.append(f"missing {kind}(s) in public: {', '.join(absent)}: {RESET_HINT}")
+
+        for role, privilege in ((DEPLOYER_ROLE, "USAGE"), (DEPLOYER_ROLE, "CREATE"), (RUNNER_ROLE, "USAGE")):
+            if not deployer.execute("SELECT has_schema_privilege(%s, 'public', %s)", (role, privilege)).fetchone()[0]:
+                problems.append(f"{role} lacks {privilege} on schema public: {ROLES_HINT}")
+        for role, kind, names, privileges in (
+            (DEPLOYER_ROLE, "table", found_tables, DEPLOYER_TABLE_PRIVILEGES),
+            (RUNNER_ROLE, "table", found_tables, RUNNER_TABLE_PRIVILEGES),
+            (RUNNER_ROLE, "sequence", found_sequences, RUNNER_SEQUENCE_PRIVILEGES),
+        ):
+            lacking = _missing(deployer, role, kind, names, privileges)
+            if lacking:
+                problems.append(f"{role} lacks rights on {kind}(s) {'; '.join(lacking)}: {ROLES_HINT}")
+
+        helper = deployer.execute(
+            "SELECT p.oid, r.rolname, r.rolsuper FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+            "JOIN pg_roles r ON r.oid = p.proowner "
+            "WHERE n.nspname = %s AND p.proname = %s AND p.proargtypes = '25 16'::oidvector",
+            (COMPAT_SCHEMA, PATH_CHECK_FUNCTION)).fetchone()
+        if helper is None:
+            problems.append(f"{COMPAT_SCHEMA}.{PATH_CHECK_FUNCTION}(text, boolean) is not installed: {ROLES_HINT}")
+        else:
+            if not helper[2]:   # admin-owned by design; the two restricted roles are never superusers
+                problems.append(f"{COMPAT_SCHEMA}.{PATH_CHECK_FUNCTION} is owned by {helper[1]}, not by the admin "
+                                f"that ran setup: {ROLES_HINT}")
+            for role in (DEPLOYER_ROLE, RUNNER_ROLE):
+                usable = deployer.execute(
+                    "SELECT has_schema_privilege(%s, %s, 'USAGE') AND has_function_privilege(%s, %s, 'EXECUTE')",
+                    (role, COMPAT_SCHEMA, role, helper[0])).fetchone()[0]
+                if not usable:
+                    problems.append(f"{role} cannot use {COMPAT_SCHEMA}.{PATH_CHECK_FUNCTION}: {ROLES_HINT}")
+    finally:
+        deployer.rollback()
+        runner.rollback()
+    return problems
+
+
+def redis_problem(url: str) -> str | None:
+    """None if Redis answers PING within 5 s; otherwise why (host and port only, never credentials)."""
+    import redis
+
+    parts = urlsplit(url)
+    where = f"{parts.hostname or '?'}:{parts.port or 6379}"
+    try:
+        redis.Redis.from_url(url, socket_connect_timeout=5, socket_timeout=5).ping()
+    except redis.RedisError as exc:
+        return (f"Redis at {where} does not answer ({type(exc).__name__}); the Gemini cache is required before any "
+                "Gemini call: docker compose up -d redis, and check REDIS_URL")
+    return None
+
+
+def show_calls(per_run: list[tuple]) -> None:
+    """The Gemini calls (and cache hits) of each object's run."""
+    print("\nGemini calls (per object; sizes only, never prompt or response text)")
+    for run, calls in per_run:
+        if not calls:
+            print(f"  {run.object_id:40} no Gemini call")
+            continue
+        for c in calls:
+            got = "-" if c.response_chars is None else c.response_chars
+            print(f"  {run.object_id:40} try {c.attempt}  {c.elapsed_ms / 1000:7.1f} s  {c.outcome:16} "
+                  f"timeout {c.timeout_s} s  prompt {c.prompt_chars}  response {got}  cache {c.cache}")
+
+
+def calls_json(per_run: list[tuple]) -> list[dict]:
+    return [{"object_id": run.object_id, "run_id": run.run_id, "calls": [asdict(c) for c in calls]}
+            for run, calls in per_run]
+
+
+def calls_path(report: Path) -> Path:
+    """reports/x.json -> reports/x.calls.json"""
+    return report.with_name(report.stem + ".calls.json")
 
 
 def fully_passed(run) -> bool:
@@ -240,9 +395,27 @@ def run_real(args, objects, by_id, tables, targets, oracledb, psycopg) -> int:
     from app.migration.llm_fallback import GeminiFallback
     from app.migration.postgres_deployer import PostgresDeployer
 
-    runs = []
+    runs, per_run = [], []
+    # Configured on its own (TARGET_DATABASE_NAME), never derived from the URLs being checked (Aarsh, 17 Nov).
+    expected_db = settings.TARGET_DATABASE_NAME
     with oracledb.connect(user=ORACLE_USER, password=ORACLE_PASSWORD, dsn=ORACLE_DSN) as ora, \
             psycopg.connect(TARGET_DEPLOYER_URL) as deployer_conn, psycopg.connect(TARGET_RUNNER_URL) as runner:
+        # F1 pre-flight: before the converter (and so Gemini) exists. Any problem stops the run here.
+        sequences = sorted(o.name.lower() for o in objects if o.type == ObjectType.SEQUENCE)
+        problems = preflight(deployer_conn, runner, database=expected_db, tables=tables, sequences=sequences)
+        if args.gemini:
+            problem = redis_problem(settings.REDIS_URL)
+            if problem:
+                problems.append(problem)
+        if problems:
+            print("Pre-flight: the target is not ready for the real converter. Nothing was converted and Gemini "
+                  "was not called.")
+            for problem in problems:
+                print(f"  - {problem}")
+            return EXIT_NOT_RUN
+        print(f"Pre-flight: OK (database {expected_db}, {len(tables)} tables, {len(sequences)} sequences, "
+              f"roles, {COMPAT_SCHEMA} helper" + (", Redis)" if args.gemini else ")"))
+
         foreign = foreign_routines(deployer_conn)
         deployer_conn.rollback()
         if foreign:
@@ -255,19 +428,21 @@ def run_real(args, objects, by_id, tables, targets, oracledb, psycopg) -> int:
             return validate_object(ora, runner, obj, cases, conversion_version=version,
                                    watch_tables=tables, masked_columns=MASKED_COLUMNS, objects=by_id)
 
-        database = deployer_conn.execute("SELECT current_database()").fetchone()[0]
-        deployer_conn.rollback()
         llm = GeminiFallback() if args.gemini else None
-        converter = OracleToPostgresConverter(PostgresDeployer(deployer_conn, database=database), objects, llm=llm)
+        # The deployer re-checks the connection against the configured name before every deploy.
+        converter = OracleToPostgresConverter(PostgresDeployer(deployer_conn, database=expected_db), objects, llm=llm)
         print("Converter: REAL (OracleToPostgresConverter). "
-              + (f"Gemini: ON, live calls (model {settings.GEMINI_MODEL})." if llm else "Gemini: OFF (no paid calls)."))
+              + (f"Gemini: ON, live calls (model {settings.GEMINI_MODEL}, timeout {settings.GEMINI_TIMEOUT_SECONDS} s)."
+                 if llm else "Gemini: OFF (no paid calls)."))
         deps = RepairDeps(converter=converter, validate=validate)
         if args.with_edge_cases:
             print("Cases: golden tests plus each object's generated cases (--with-edge-cases).")
         for obj in targets:
-            run = run_repair_loop(deps, obj, cases_for(obj.object_id, args.with_edge_cases))
+            with _gemini_calls(args.gemini) as calls:   # this object's run only (Aarsh's safeguard B)
+                run = run_repair_loop(deps, obj, cases_for(obj.object_id, args.with_edge_cases))
             show(run, None)
             runs.append(run)
+            per_run.append((run, list(calls)))
 
     print("\nSummary (real converter)")
     for run in runs:
@@ -275,12 +450,26 @@ def run_real(args, objects, by_id, tables, targets, oracledb, psycopg) -> int:
         score = f"{tested.passed}/{len(tested.tests)} tests" if tested else "not tested"
         note = f"  ({run.attempts[-1].failure_code})" if run.attempts[-1].failure_code else ""
         print(f"  {run.object_id:40} {len(run.attempts)} attempt(s)  {score:12} {OUTCOME_LABEL[run.outcome]}{note}")
+    if args.gemini:
+        show_calls(per_run)
     print("\nThe target database now holds the real converter's output. "
           "Run scripts/seed_target.py again to reset it.\n")
     if args.json:
         args.json.write_text(json.dumps([r.model_dump(mode="json") for r in runs], indent=2), encoding="utf-8")
         print(f"Wrote {args.json}")
+        if args.gemini:
+            calls_path(args.json).write_text(json.dumps(calls_json(per_run), indent=2), encoding="utf-8")
+            print(f"Wrote {calls_path(args.json)}")
     return finish(runs)
+
+
+def _gemini_calls(gemini: bool):
+    """llm_service.recording() when Gemini may be called; otherwise an empty list (no SDK import)."""
+    if not gemini:
+        return contextlib.nullcontext([])
+    from app.services import llm_service
+
+    return llm_service.recording()
 
 
 if __name__ == "__main__":
