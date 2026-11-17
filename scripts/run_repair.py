@@ -15,6 +15,12 @@ deploying as pv_deployer and validating as pv_runner against live Oracle:
     python scripts/setup_target_roles.py
     python scripts/run_repair.py all --converter real
     python scripts/run_repair.py all --converter real --gemini   # opt-in: paid Gemini calls
+    python scripts/run_repair.py org_chart --converter real --with-edge-cases   # + generated cases (7d)
+
+--with-edge-cases (step 7d, real converter only) adds the object's generated cases
+(app/validation/generators.py, default seed and budget) to its golden tests, so the loop
+also sees failures only a generated case finds, such as DEF-7c-1. They run live on Oracle
+and PostgreSQL like the golden tests; the recorded corpus is not used or changed.
 
 Gemini is OFF unless --gemini is given AND GEMINI_API_KEY is configured. Without it,
 org_chart (CONNECT BY, no deterministic rule) is reported as needing Gemini, which is the
@@ -75,6 +81,16 @@ OUTCOME_LABEL = {
     RepairOutcome.PASSED_NEEDS_REVIEW: "PASSED, needs sign-off",
     RepairOutcome.NEEDS_HUMAN: "NEEDS HUMAN",
 }
+
+
+def cases_for(object_id: str, with_edge_cases: bool = False) -> list:
+    """The golden tests, plus (step 7d) the object's generated cases, golden first."""
+    cases = list(golden_tests_for(object_id))
+    if with_edge_cases:
+        from app.validation.generators import generate
+
+        cases += [c for c in generate() if c.object_id == object_id]
+    return cases
 
 
 def prepared_repairs(objects) -> dict[str, list[Path]]:
@@ -156,7 +172,12 @@ def main() -> int:
                         help="stand-in (default): prepared repair files; real: OracleToPostgresConverter")
     parser.add_argument("--gemini", action="store_true",
                         help="with --converter real: allow paid Gemini calls (needs GEMINI_API_KEY)")
+    parser.add_argument("--with-edge-cases", action="store_true",
+                        help="with --converter real: also run the object's generated cases (step 7d)")
     args = parser.parse_args()
+    if args.with_edge_cases and args.converter != "real":
+        print("--with-edge-cases only applies to --converter real.")
+        return EXIT_NOT_RUN
     if args.gemini and args.converter != "real":
         print("--gemini only applies to --converter real.")
         return EXIT_NOT_RUN
@@ -241,8 +262,10 @@ def run_real(args, objects, by_id, tables, targets, oracledb, psycopg) -> int:
         print("Converter: REAL (OracleToPostgresConverter). "
               + (f"Gemini: ON, live calls (model {settings.GEMINI_MODEL})." if llm else "Gemini: OFF (no paid calls)."))
         deps = RepairDeps(converter=converter, validate=validate)
+        if args.with_edge_cases:
+            print("Cases: golden tests plus each object's generated cases (--with-edge-cases).")
         for obj in targets:
-            run = run_repair_loop(deps, obj, golden_tests_for(obj.object_id))
+            run = run_repair_loop(deps, obj, cases_for(obj.object_id, args.with_edge_cases))
             show(run, None)
             runs.append(run)
 

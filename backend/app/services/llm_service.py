@@ -32,12 +32,19 @@ class LLMNotConfigured(RuntimeError):
 def _client() -> genai.Client:
     if not settings.GEMINI_API_KEY:
         raise LLMNotConfigured("GEMINI_API_KEY is empty. Add it to .env and restart api/worker.")
-    return genai.Client(api_key=settings.GEMINI_API_KEY)
-
+    return genai.Client(
+        api_key=settings.GEMINI_API_KEY,
+        http_options=types.HttpOptions(timeout=30_000),
+    )
 
 @lru_cache
 def _cache() -> redis.Redis:
-    return redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    return redis.Redis.from_url(
+        settings.REDIS_URL,
+        decode_responses=True,
+        socket_connect_timeout=5,
+        socket_timeout=5,
+    )
 
 
 def _cache_key(model: str, system: str | None, prompt: str) -> str:

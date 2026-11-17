@@ -18,6 +18,9 @@ them, so neither role can drop or truncate them.
 ``ensure_roles`` is idempotent and re-applies the restrictions every time, so a
 role that was loosened by hand is tightened again. It must run as a superuser
 inside the target database, after the tables exist.
+
+It also installs the platform's compatibility functions (``compat.py``, step 7d):
+admin-owned, callable by both roles, replaceable by neither.
 """
 
 from __future__ import annotations
@@ -26,6 +29,8 @@ import re
 
 import psycopg
 from psycopg import sql
+
+from app.migration.compat import ensure_compat
 
 DEPLOYER_ROLE = "pv_deployer"
 RUNNER_ROLE = "pv_runner"
@@ -113,6 +118,9 @@ def ensure_roles(
         cur.execute(
             sql.SQL("ALTER DEFAULT PRIVILEGES FOR ROLE {} GRANT SELECT ON TABLES TO {}").format(deployer, runner)
         )
+
+        # Platform compatibility functions (step 7d): owned by this admin, called by both roles.
+        ensure_compat(cur, deployer_role=deployer_role, runner_role=runner_role)
 
 
 def role_report(conn: psycopg.Connection, role: str) -> dict:

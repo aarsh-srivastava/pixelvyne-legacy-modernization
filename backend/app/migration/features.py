@@ -320,6 +320,18 @@ _PATTERNS: list[tuple[str, Handling, re.Pattern, str]] = [
      "Oracle system package (UTL_* / DBMS_*)"),
 ]
 
+#: Step 7d: how converted code reproduces ORA-30004. Appended to the CONNECT_BY finding's detail when
+#: SYS_CONNECT_BY_PATH is used, so Gemini sees it among the constructs without a rule; still one finding
+#: with the same code, so routing and Gemini eligibility are unchanged. The function is the platform's
+#: own (compat.py); converted code may call it but never create a function.
+_SYS_CONNECT_BY_PATH = re.compile(r"\bSYS_CONNECT_BY_PATH\b", re.I)
+CONNECT_BY_PATH_HINT = (
+    "SYS_CONNECT_BY_PATH must raise like ORA-30004 when a value contains the separator: in the recursive CTE "
+    "carry has_sep = strpos(value, separator) > 0 for each row, and return the path from the outer SELECT as "
+    "pv_compat.connect_by_path_checked(path, bool_or(has_sep) OVER ()). The platform provides that function "
+    "(it raises SQLSTATE PV001); do not create any function"
+)
+
 _SELECT_INTO = re.compile(r"\bSELECT\b(?:(?!\bFROM\b).)*?\bINTO\b", re.I | re.S)
 _ROWNUM = re.compile(r"\bROWNUM\b", re.I)
 _TOP_N = re.compile(
@@ -378,6 +390,8 @@ def detect_features(
 
     for feature, handling, pattern, detail in _PATTERNS:
         if pattern.search(masked):
+            if feature == "CONNECT_BY" and _SYS_CONNECT_BY_PATH.search(masked):
+                detail = f"{detail}; {CONNECT_BY_PATH_HINT}"
             report.add(feature, handling, detail)
     if any(_SELECT_INTO.search(piece) for piece in masked.split(";")):
         report.add("SELECT_INTO", Handling.RULE, "SELECT ... INTO (raises NO_DATA_FOUND / TOO_MANY_ROWS)")

@@ -31,6 +31,7 @@ ORACLE_CATEGORIES = {
     "ORA-01438": "numeric_overflow",
     "ORA-01722": "invalid_number",
     "ORA-06502": "value_error",
+    "ORA-30004": "connect_by_path_separator",   # SYS_CONNECT_BY_PATH separator in a value (DEF-7c-1)
     # The harness could not run the test: object missing or invalid, connection lost.
     "ORA-00942": HARNESS,
     "ORA-04063": HARNESS,
@@ -55,6 +56,7 @@ POSTGRES_CATEGORIES = {
     "22003": "numeric_overflow",
     "22P02": "invalid_number",
     "P0001": "user_raised",
+    "PV001": "connect_by_path_separator",   # raised only by pv_compat.connect_by_path_checked (compat.py)
     "42883": HARNESS,   # undefined function / procedure
     "42P01": HARNESS,   # undefined table
     "42703": HARNESS,   # undefined column

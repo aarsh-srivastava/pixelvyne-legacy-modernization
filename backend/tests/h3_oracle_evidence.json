@@ -1,0 +1,29 @@
+{
+  "about": "Step 7d, H3: when Oracle raises ORA-30004 for org_chart. Recorded by hand from the run's output; regression evidence for test_compat_7d.py. Kept apart from the 150-case corpus (edge_corpus.json), which is unchanged.",
+  "recorded": {
+    "oracle_version": "23.26.3.0.0",
+    "where": "Tarun's laptop, Docker Oracle 23 Free",
+    "when": "2026-11-16, about 15:09 IST",
+    "script": "probe_7d_h3.py (outside the repo)",
+    "method": "each scenario inserted employee 914 (dept 10, hired 2024-01-02, salary 50000, ACTIVE; only name and manager vary), ran one query, fetched one row at a time, and rolled back in a finally block",
+    "rollback_confirmed": "before: 11 employees, no 914; after, on a new connection: 11 employees, no 914"
+  },
+  "scenarios": [
+    {"id": "H3.1", "name": "A > B", "manager_id": 101, "query": "SELECT * FROM org_chart ORDER BY emp_id",
+     "oracle": {"error": "ORA-30004", "rows_before_error": 0}},
+    {"id": "H3.2", "name": "A > B", "manager_id": 101, "query": "SELECT emp_id FROM org_chart ORDER BY emp_id",
+     "oracle": {"rows": 12, "row_914": [914]}},
+    {"id": "H3.3", "name": "A > B", "manager_id": 101, "query": "SELECT * FROM org_chart WHERE emp_id = 101",
+     "oracle": {"error": "ORA-30004", "rows_before_error": 1}},
+    {"id": "H3.4", "name": "A>B", "manager_id": 101, "query": "SELECT * FROM org_chart ORDER BY emp_id",
+     "oracle": {"rows": 12, "row_914": [914, "A>B", 101, 2, " > Asha Verma > A>B"]}},
+    {"id": "H3.5", "name": "A > B", "manager_id": 108, "query": "SELECT * FROM org_chart ORDER BY emp_id",
+     "oracle": {"error": "ORA-30004", "rows_before_error": 0}},
+    {"id": "H3.6", "name": "A > B", "manager_id": 101, "query": "SELECT COUNT(*) FROM org_chart",
+     "oracle": {"rows": 1, "values": [[12]]}},
+    {"id": "H3.7", "name": "A > B", "manager_id": 101, "query": "SELECT emp_id, full_name, depth FROM org_chart ORDER BY emp_id",
+     "oracle": {"rows": 12, "row_914": [914, "A > B", 2]}},
+    {"id": "H3.8", "name": "A > B", "manager_id": 101, "query": "SELECT emp_id, reporting_line FROM org_chart WHERE emp_id = 914",
+     "oracle": {"error": "ORA-30004", "rows_before_error": 1}}
+  ]
+}
