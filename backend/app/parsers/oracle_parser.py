@@ -50,6 +50,7 @@ CREATE_PATTERN = re.compile(
         SEQUENCE
     )
     \s+
+    (?:(?P<schema>"[^"]+"|[\w$#]+)\s*\.\s*)?   # CREATE legacy.x: the schema, if written (v11)
     (?P<name>"[^"]+"|[\w$#]+)
     """,
     re.IGNORECASE | re.VERBOSE,
@@ -202,7 +203,7 @@ def extract_params(source: str, kind: str) -> list[Param]:
         return []
 
     header_match = re.search(
-        r"\b" + kind + r"\s+[\w$#\"]+\s*\(",
+        r"\b" + kind + r"\s+(?:[\w$#\"]+\s*\.\s*)?[\w$#\"]+\s*\(",
         source,
         re.IGNORECASE | re.DOTALL,
     )
@@ -336,9 +337,21 @@ def _blank_strings(source: str) -> str:
 def extract_table_references(source: str) -> tuple[list[str], list[str]]:
     """Extract table read and write references from Oracle SQL/PLSQL.
 
-    Schema-qualified names are preserved.
-    Example: HR.EMPLOYEES -> HR.EMPLOYEES
+    Schema-qualified names are preserved, normalized.
+    Example: HR.EMPLOYEES -> hr.employees
+    Resolution reads the names as written instead (_raw_table_references), because the
+    quoting matters there: "Employees" is not EMPLOYEES (PR 1 v11).
     """
+
+    def extract_object_name(value: str) -> str:
+        """Normalize identifiers while preserving schema qualification."""
+        return _normalized(split_reference(value))
+
+    return _table_references(source, extract_object_name)
+
+
+def _table_references(source: str, name_of) -> tuple[list[str], list[str]]:
+    """Sorted (reads, writes), each name passed through ``name_of``."""
 
     reads: set[str] = set()
     writes: set[str] = set()
@@ -350,11 +363,6 @@ def extract_table_references(source: str) -> tuple[list[str], list[str]]:
     # Support regular and quoted Oracle identifiers.
     identifier = r'(?:"[^"]+"|[\w$#]+)'
     qualified_name = rf'{identifier}(?:\s*\.\s*{identifier})?'
-
-    def extract_object_name(value: str) -> str:
-        """Normalize identifiers while preserving schema qualification."""
-        parts = re.split(r"\s*\.\s*", value.strip())
-        return ".".join(normalize_name(part) for part in parts)
 
     # Tables referenced by FROM and JOIN.
     read_patterns = [
@@ -374,7 +382,9 @@ def extract_table_references(source: str) -> tuple[list[str], list[str]]:
 
         # Normal UPDATE: UPDATE employees SET ...
         re.compile(
-            rf"\bUPDATE\s+(?!OF\b)({qualified_name})",
+            # Not a trigger's UPDATE OF / UPDATE ON / UPDATE OR (reserved words, never
+            # table names; v10 read ON and OR as tables, v11).
+            rf"\bUPDATE\s+(?!(?:OF|ON|OR)\b)({qualified_name})",
             re.IGNORECASE,
         ),
 
@@ -399,11 +409,11 @@ def extract_table_references(source: str) -> tuple[list[str], list[str]]:
 
     for pattern in read_patterns:
         for match in pattern.finditer(source):
-            reads.add(extract_object_name(match.group(1)))
+            reads.add(name_of(match.group(1)))
 
     for pattern in write_patterns:
         for match in pattern.finditer(source):
-            writes.add(extract_object_name(match.group(1)))
+            writes.add(name_of(match.group(1)))
 
     return sorted(reads), sorted(writes)
 
@@ -518,62 +528,205 @@ def extract_trigger_metadata(source: str) -> dict | None:
     }
 
 
-def resolve_object_dependencies(objects: list[IRObject]) -> None:
+# ---------------------------------------------------------------------------
+# 7b. Oracle name resolution (PR 1 v11)
+# ---------------------------------------------------------------------------
+#
+# A reference resolves to an uploaded object only when Oracle would resolve it there:
+# unquoted names are stored upper-case and quoted names exactly ("EMPLOYEES" is EMPLOYEES,
+# "Employees" is not), and a schema-qualified name resolves only in the upload's schema
+# (hr.employees is HR's table, never the upload's). The same rules apply to tables and
+# views, sequences, package members and standalone routines, and references.py uses this
+# resolver too, so a line is placed on the object the parser linked.
+
+_CHAIN_ID = r'(?:"[^"]+"|[A-Za-z_][\w$#]*)'
+#: A dotted name of two or more parts, not starting in the middle of another name.
+_DOTTED_CHAIN = re.compile(rf'(?<![\w$#."]){_CHAIN_ID}(?:\s*\.\s*{_CHAIN_ID})+')
+_PARTS = re.compile(r'"[^"]+"|[^\s."]+')
+_UNQUOTED_FORM = re.compile(r"^[A-Z_][A-Z0-9_$#]*$")
+_SEQUENCE_PSEUDOCOLUMNS = {"NEXTVAL", "CURRVAL"}
+
+
+def oracle_canonical(identifier: str) -> str:
+    """The name Oracle stores: unquoted names fold to upper case, quoted names stay exact.
+
+    Matches features._canonical (the G3 allow-list), so both checks compare names alike.
+    """
+    identifier = identifier.strip()
+    if len(identifier) >= 2 and identifier[0] == identifier[-1] == '"':
+        return identifier[1:-1]
+    return identifier.upper()
+
+
+def split_reference(reference: str) -> list[str]:
+    """The parts of a dotted name as written, quotes kept: 'hr . "Emp"' -> ['hr', '"Emp"']."""
+    return _PARTS.findall(reference)
+
+
+def _normalized(parts: list[str]) -> str:
+    return ".".join(normalize_name(part) for part in parts)
+
+
+def name_regex(canonical: str) -> str:
+    """A regex for every spelling Oracle reads as ``canonical``.
+
+    The quoted spelling always; the unquoted spelling, in any case, only when the canonical
+    name is one an unquoted name can produce (upper case). Compile it without IGNORECASE.
+    """
+    alternatives = [re.escape(f'"{canonical}"')]
+    if _UNQUOTED_FORM.match(canonical):
+        alternatives.append(rf"(?i:{re.escape(canonical)})(?![\w$#])")
+    return "(?:" + "|".join(alternatives) + ")"
+
+
+UPLOAD_SCHEMA = oracle_canonical(DEFAULT_SCHEMA)
+
+
+class NameResolver:
+    """Resolves references as written to uploaded object ids, by Oracle's rules.
+
+    ``declared_names`` maps object_id -> the Oracle name as declared (ParseResult.declared_names).
+    Without it, every object is taken as declared unquoted (its name upper-cased).
+    """
+
+    def __init__(self, objects: Iterable[IRObject], declared_names: dict[str, str] | None = None):
+        declared_names = declared_names or {}
+        objects = list(objects)
+        self.schema = UPLOAD_SCHEMA
+        self.tables: dict[str, str] = {}
+        self.sequences: dict[str, str] = {}
+        self.packages: dict[str, str] = {}
+        self.package_canonical: dict[str, str] = {}   # normalized package name -> canonical
+        self.routines: dict[tuple[str | None, str], list[str]] = defaultdict(list)
+
+        def declared(obj: IRObject) -> str:
+            return declared_names.get(obj.object_id) or obj.name.upper()
+
+        for obj in objects:
+            if obj.type == ObjectType.PACKAGE:
+                self.packages[declared(obj)] = obj.object_id
+                self.package_canonical[obj.name] = declared(obj)
+        for obj in objects:
+            if obj.type in {ObjectType.TABLE, ObjectType.VIEW}:
+                self.tables[declared(obj)] = obj.object_id
+            elif obj.type == ObjectType.SEQUENCE:
+                self.sequences[declared(obj)] = obj.object_id
+            elif obj.type in {ObjectType.FUNCTION, ObjectType.PROCEDURE}:
+                package = self.package_of(obj.package)
+                self.routines[(package, declared(obj))].append(obj.object_id)
+
+    def package_of(self, package: str | None) -> str | None:
+        """The canonical name of a package, from an IRObject's (normalized) package field."""
+        if package is None:
+            return None
+        return self.package_canonical.get(package, package.upper())
+
+    def _in_schema(self, parts: list[str], size: int) -> list[str] | None:
+        """The canonical name parts without the schema, when the reference is in the upload's
+        schema; None when it names another schema (or has too many parts)."""
+        canonical = [oracle_canonical(p) for p in parts]
+        if len(canonical) == size + 1:
+            return canonical[1:] if canonical[0] == self.schema else None
+        return canonical if len(canonical) == size else None
+
+    def _unresolved(self, parts: list[str]) -> str:
+        return make_unresolved_id(_normalized(parts), default_schema=DEFAULT_SCHEMA)
+
+    def table(self, reference: str) -> str:
+        """A table or view reference ([schema.]name): its object_id, or an unresolved id."""
+        parts = split_reference(reference)
+        name = self._in_schema(parts, 1)
+        if name and name[0] in self.tables:
+            return self.tables[name[0]]
+        return self._unresolved(parts)
+
+    def sequence(self, parts: list[str]) -> str:
+        """A sequence ([schema.]name, without .NEXTVAL): its object_id, or an unresolved id."""
+        name = self._in_schema(parts, 1)
+        if name and name[0] in self.sequences:
+            return self.sequences[name[0]]
+        return self._unresolved(parts)
+
+    def routine(self, name: str, package: str | None) -> str | None:
+        """A routine by canonical name and canonical package (None: standalone), if unique."""
+        candidates = self.routines.get((package, name), [])
+        return candidates[0] if len(candidates) == 1 else None
+
+    def dotted(self, parts: list[str]) -> str | None:
+        """A dotted name that is not a sequence pseudocolumn (see sequence()).
+
+        * [schema.]pkg.member...: the member's id, or the package's for a constant or state;
+        * schema.routine and schema.pkg: that routine or package, in the upload's schema;
+        * other_schema.pkg.member, where pkg is an uploaded package's name: another schema's
+          package, kept unresolved (external) rather than linked to the upload's package;
+        * anything else (alias.column, record.field, an unknown package): not a reference
+          this resolver can place, so None, as before.
+        """
+        canonical = [oracle_canonical(p) for p in parts]
+        if len(canonical) >= 2 and canonical[0] == self.schema:
+            rest = canonical[1:]
+            if rest[0] in self.packages:
+                return self._member(rest)
+            if len(rest) == 1:
+                return self.routine(rest[0], None)
+            return None
+        if canonical[0] in self.packages:
+            return self._member(canonical)
+        if len(canonical) >= 3 and canonical[1] in self.packages:
+            return self._unresolved(parts[:3])
+        return None
+
+    def _member(self, canonical: list[str]) -> str:
+        package_id = self.packages[canonical[0]]
+        if len(canonical) == 1:
+            return package_id
+        return self.routine(canonical[1], canonical[0]) or package_id
+
+    def resolve(self, reference: str, kind: str, current_package: str | None = None) -> str | None:
+        """What ``reference`` (as written, without .NEXTVAL or the call's parenthesis) points
+        to, read as an object of ``kind`` (an ObjectType value). None: it is not one."""
+        parts = split_reference(reference)
+        if not parts:
+            return None
+        if kind in {"table", "view"}:
+            return self.table(reference)
+        if kind == "sequence":
+            return self.sequence(parts)
+        if len(parts) == 1:
+            name = oracle_canonical(parts[0])
+            if kind == "package":
+                return self.packages.get(name)
+            package = self.package_of(current_package)
+            return (package and self.routine(name, package)) or self.routine(name, None)
+        return self.dotted(parts)
+
+
+def _raw_table_references(source: str) -> list[str]:
+    """Table and view references as written (quotes kept), for resolution."""
+    reads, writes = _table_references(source, lambda value: re.sub(r"\s+", "", value))
+    return [*reads, *writes]
+
+
+_FK_REFERENCE = re.compile(r'\bREFERENCES\s+((?:"[^"]+"|[\w$#]+)(?:\s*\.\s*(?:"[^"]+"|[\w$#]+))?)', re.IGNORECASE)
+
+
+def _foreign_key_references(source: str) -> list[str]:
+    """Tables a CREATE TABLE's foreign keys reference, as written."""
+    return [re.sub(r"\s+", "", m.group(1)) for m in _FK_REFERENCE.finditer(_blank_strings(source))]
+
+
+def resolve_object_dependencies(
+    objects: list[IRObject],
+    declared_names: dict[str, str] | None = None,
+) -> None:
     """Resolve extracted SQL references to canonical object IDs.
 
     Mutates each IRObject.depends_on after all objects have been discovered.
-    Unknown references are retained as unresolved IDs.
+    Unknown references are retained as unresolved IDs. ``declared_names`` is
+    ParseResult.declared_names; see NameResolver for the rules.
     """
 
-    from app.contracts import parse_object_id
-
-    by_id = {obj.object_id: obj for obj in objects}
-
-    tables: dict[str, str] = {}
-    sequences: dict[str, str] = {}
-    packages: dict[str, str] = {}
-    routines: dict[tuple[str | None, str], list[str]] = {}
-
-    # Build indexes from the complete set of discovered objects.
-    for obj in objects:
-        ref = parse_object_id(obj.object_id)
-
-        if obj.type in {ObjectType.TABLE, ObjectType.VIEW}:
-            tables[obj.name] = obj.object_id
-
-        elif obj.type == ObjectType.SEQUENCE:
-            sequences[obj.name] = obj.object_id
-
-        elif obj.type == ObjectType.PACKAGE:
-            packages[obj.name] = obj.object_id
-
-        elif obj.type in {ObjectType.FUNCTION, ObjectType.PROCEDURE}:
-            routines.setdefault((obj.package, obj.name), []).append(
-                obj.object_id
-            )
-
-    def resolve_table(reference: str) -> str:
-        name = reference.split(".")[-1]
-        normalized = normalize_name(name)
-
-        if normalized in tables:
-            return tables[normalized]
-
-        return make_unresolved_id(
-            reference,
-            default_schema=DEFAULT_SCHEMA,
-        )
-
-    def resolve_routine(
-        name: str,
-        package: str | None = None,
-    ) -> str | None:
-        candidates = routines.get((package, normalize_name(name)), [])
-
-        if len(candidates) == 1:
-            return candidates[0]
-
-        return None
+    resolver = NameResolver(objects, declared_names)
 
     for obj in objects:
         dependencies: set[str] = set()
@@ -581,88 +734,56 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
         # so a name inside a message never becomes a dependency (PR 1, G2).
         code = _blank_strings(obj.source_code)
 
-        # 1. Table reads and writes, including foreign-key references.
-        for reference in [*obj.reads_tables, *obj.writes_tables]:
-            dependency = resolve_table(reference)
+        # 1. Table reads and writes, including foreign-key references, as written: the
+        # quoting and the schema decide what they resolve to (v11). reads_tables and
+        # writes_tables entries not found in the source (an IRObject built by hand) are
+        # resolved as unquoted names.
+        references = _raw_table_references(obj.source_code)
+        if obj.type == ObjectType.TABLE:
+            references += _foreign_key_references(obj.source_code)
+        seen = {_normalized(split_reference(r)) for r in references}
+        references += [r for r in [*obj.reads_tables, *obj.writes_tables] if r not in seen]
+        for reference in references:
+            dependency = resolver.table(reference)
             if dependency != obj.object_id:
                 dependencies.add(dependency)
 
-        # 2. Sequence NEXTVAL and CURRVAL references.
-        for match in re.finditer(
-            r'\b([\w$#]+(?:\s*\.\s*[\w$#]+)?)\s*\.\s*(?:NEXTVAL|CURRVAL)\b',
-            code,
-            re.IGNORECASE,
-        ):
-            reference = re.sub(r"\s+", "", match.group(1))
-            sequence_name = normalize_name(reference.split(".")[-1])
-
-            dependency = sequences.get(sequence_name)
-            if dependency is None:
-                dependency = make_unresolved_id(
-                    reference,
-                    default_schema=DEFAULT_SCHEMA,
-                )
-
-            if dependency != obj.object_id:
-                dependencies.add(dependency)
-
-        # 3. Explicit package-qualified references.
-        for match in re.finditer(
-            r'\b([A-Za-z_$#][\w$#]*)\s*\.\s*([A-Za-z_$#][\w$#]*)\b',
-            code,
-            re.IGNORECASE,
-        ):
-            package_name = normalize_name(match.group(1))
-            member_name = normalize_name(match.group(2))
-
-            package_id = packages.get(package_name)
-            if package_id is None:
-                continue
-
-            # A known routine member gets its own ID.
-            # Package constants and state depend on the package itself.
-            member_id = resolve_routine(member_name, package_name)
-            dependency = member_id or package_id
-
-            if dependency != obj.object_id:
+        # 2 and 3. Dotted names: sequence pseudocolumns ([schema.]seq.NEXTVAL / CURRVAL) and
+        # package-qualified references ([schema.]pkg.member, other_schema.pkg.member).
+        for match in _DOTTED_CHAIN.finditer(code):
+            parts = split_reference(match.group(0))
+            if oracle_canonical(parts[-1]) in _SEQUENCE_PSEUDOCOLUMNS:
+                if len(parts) > 3:
+                    continue
+                dependency = resolver.sequence(parts[:-1])
+            else:
+                dependency = resolver.dotted(parts)
+            if dependency and dependency != obj.object_id:
                 dependencies.add(dependency)
 
         # 4. Unqualified routine calls inside the same package, with or without arguments
         # (flush(1) or flush;), as in 4b. A qualified other_pkg.flush( is not this package's
-        # member; step 3 handles qualified names (PR 1, G2).
-        current_package = obj.package
+        # member; step 3 handles qualified names (PR 1, G2). Names match by Oracle's rules:
+        # "FLUSH"( is flush(, "Flush"( is not (v11).
+        current_package = resolver.package_of(obj.package)
 
         if current_package:
-            for member_name in routines:
-                package_name, routine_name = member_name
-
+            for (package_name, routine_name), candidates in resolver.routines.items():
                 if package_name != current_package:
                     continue
-
-                if re.search(
-                    rf"(?<![\w$#.\"]){re.escape(routine_name)}\s*(?:\(|;)",
-                    code,
-                    re.IGNORECASE,
-                ):
-                    dependency = resolve_routine(
-                        routine_name,
-                        current_package,
-                    )
+                if re.search(rf"(?<![\w$#.\"]){name_regex(routine_name)}\s*(?:\(|;)", code):
+                    dependency = resolver.routine(routine_name, current_package)
                     if dependency and dependency != obj.object_id:
                         dependencies.add(dependency)
 
         # 4b. Calls to standalone (non-package) functions and procedures, with or
         # without arguments: calc_bonus(102) or log_run;. (PR 1, G2 and G10 groundwork.)
-        for (package_name, routine_name), candidates in routines.items():
+        for (package_name, routine_name), candidates in resolver.routines.items():
             if package_name is not None or len(candidates) != 1:
                 continue
             if candidates[0] == obj.object_id:
                 continue
-            if re.search(
-                rf"(?<![\w$#.\"]){re.escape(routine_name)}\s*(?:\(|;)",
-                code,
-                re.IGNORECASE,
-            ):
+            if re.search(rf"(?<![\w$#.\"]){name_regex(routine_name)}\s*(?:\(|;)", code):
                 dependencies.add(candidates[0])
 
         # 5. Trigger attachment is a dependency, not a body write.
@@ -670,7 +791,7 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
             metadata = extract_trigger_metadata(obj.source_code)
 
             if metadata:
-                dependency = resolve_table(metadata["table_reference"])
+                dependency = resolver.table(metadata["table_reference"])
 
                 if dependency != obj.object_id:
                     dependencies.add(dependency)
@@ -685,7 +806,7 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
                         update_columns=metadata["update_columns"],
                         for_each_row=metadata["for_each_row"],
                     )
-                            # Store the resolved canonical dependencies on the IR object.
+        # Store the resolved canonical dependencies on the IR object.
         obj.depends_on = sorted(dependencies)
 
 
@@ -752,7 +873,7 @@ def extract_package_members(
         (?P<kind>FUNCTION|PROCEDURE)
         \s+
         (?P<name>"[^"]+"|[\w$#]+)
-        \b
+        (?![\w$#])   # not \b, which never follows a closing quote: "Mx" was dropped (v11)
         """,
         re.IGNORECASE | re.MULTILINE | re.VERBOSE,
     )
@@ -760,6 +881,7 @@ def extract_package_members(
     for match in member_pattern.finditer(source):
         kind = match.group("kind").upper()
         name = normalize_name(match.group("name"))
+        token = match.group("name")
 
         # Find the end of this routine implementation.
         end_pattern = re.compile(
@@ -782,6 +904,7 @@ def extract_package_members(
             {
                 "kind": kind,
                 "name": name,
+                "declared": oracle_canonical(token),
                 "source": member_source,
                 # Offset of the member in the source passed in (for line numbers).
                 "start": body_match.start() + match.start(),
@@ -831,11 +954,39 @@ class DuplicateDefinitionError(ValueError):
 
 
 @dataclass(frozen=True)
+class ForeignSchemaDefinition:
+    name: str              # as written: hr.x, "legacy".x
+    place: SourceLocation
+
+
+class ForeignSchemaDefinitionError(ValueError):
+    """The upload creates objects in a schema other than the upload's (PR 1 v11).
+
+    Object ids carry the upload's schema, so CREATE hr.x cannot be filed as legacy.x
+    without changing what it is. Schemas compare as Oracle compares names: "legacy" (quoted
+    lower case) is not LEGACY. Every such CREATE is listed, sorted by file and line.
+    """
+
+    def __init__(self, definitions: list[ForeignSchemaDefinition]):
+        self.definitions = sorted(definitions, key=lambda d: (d.place.file, d.place.line, d.name))
+        lines = [f"Objects in another schema: this upload is for schema {DEFAULT_SCHEMA}."]
+        lines += [f"  {d.place.file} line {d.place.line}: {d.name}" for d in self.definitions]
+        lines.append("Upload each schema separately, or remove the schema prefix.")
+        super().__init__("\n".join(lines))
+
+
+@dataclass(frozen=True)
 class ParseResult:
-    """The parser's output: IR objects plus where each one starts."""
+    """The parser's output: IR objects plus where each one starts.
+
+    ``declared_names`` maps object_id -> the Oracle name as declared (EMPLOYEES for an
+    unquoted employees, Employees for "Employees"); object ids are lower-case by contract,
+    so this is where the quoting survives (PR 1 v11). See NameResolver.
+    """
 
     objects: list[IRObject]
     locations: dict[str, SourceLocation] = field(default_factory=dict)  # object_id -> start
+    declared_names: dict[str, str] = field(default_factory=dict)
 
 
 def _line_at(text: str, index: int, first_line: int) -> int:
@@ -872,10 +1023,12 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
 def parse_sources_detailed(sources: dict[str, str]) -> ParseResult:
     """parse_sources, plus each object's starting file and line.
 
-    Raises DuplicateDefinitionError when an object is defined more than once.
+    Raises ForeignSchemaDefinitionError when a CREATE names another schema, and
+    DuplicateDefinitionError when an object is defined more than once.
     """
 
     discovered: list[dict] = []
+    foreign: list[ForeignSchemaDefinition] = []
 
     # First pass: discover object declarations.
     for filename, content in sources.items():
@@ -888,16 +1041,28 @@ def parse_sources_detailed(sources: dict[str, str]) -> ParseResult:
 
             kind = get_object_kind(match)
             name = normalize_name(match.group("name"))
+            line = _line_at(statement, match.start(), first_line)
+
+            schema = match.group("schema")
+            if schema is not None and oracle_canonical(schema) != UPLOAD_SCHEMA:
+                foreign.append(
+                    ForeignSchemaDefinition(f"{schema}.{match.group('name')}", SourceLocation(filename, line))
+                )
+                continue
 
             discovered.append(
                 {
                     "name": name,
+                    "declared": oracle_canonical(match.group("name")),
                     "kind": kind,
                     "source": statement.strip(),
                     "filename": filename,
-                    "line": _line_at(statement, match.start(), first_line),
+                    "line": line,
                 }
             )
+
+    if foreign:
+        raise ForeignSchemaDefinitionError(foreign)
 
     duplicates = _find_duplicates(discovered)
     if duplicates:
@@ -928,6 +1093,7 @@ def parse_sources_detailed(sources: dict[str, str]) -> ParseResult:
 
     objects: list[IRObject] = []
     locations: dict[str, SourceLocation] = {}
+    declared_names: dict[str, str] = {}
 
     # Second pass: extract metadata and construct IR.
     for item in merged.values():
@@ -938,14 +1104,10 @@ def parse_sources_detailed(sources: dict[str, str]) -> ParseResult:
 
         reads, writes = extract_table_references(source)
 
-        # For CREATE TABLE foreign keys, capture referenced tables too.
+        # For CREATE TABLE foreign keys, capture referenced tables too, schema kept
+        # (REFERENCES hr.departments is hr.departments, not hr; v11).
         if kind == "TABLE":
-            for match in re.finditer(
-                r"\bREFERENCES\s+([\w$#]+)",
-                source,
-                re.IGNORECASE,
-            ):
-                reads.append(normalize_name(match.group(1)))
+            reads += [_normalized(split_reference(r)) for r in _foreign_key_references(source)]
 
         reads = sorted(set(reads))
         writes = sorted(set(writes))
@@ -966,6 +1128,7 @@ def parse_sources_detailed(sources: dict[str, str]) -> ParseResult:
             schema=DEFAULT_SCHEMA,
         )
         locations[object_id] = SourceLocation(item["filename"], item["line"])
+        declared_names[object_id] = item["declared"]
         objects.append(
             IRObject(
                 object_id=object_id,
@@ -1004,6 +1167,7 @@ def parse_sources_detailed(sources: dict[str, str]) -> ParseResult:
                 member_place = _member_location(item, member["start"])
                 if member_id not in locations:
                     locations[member_id] = member_place
+                    declared_names[member_id] = member["declared"]
                 objects.append(
                     IRObject(
                         object_id=member_id,
@@ -1031,11 +1195,12 @@ def parse_sources_detailed(sources: dict[str, str]) -> ParseResult:
         for obj in objects
     )
 
-    resolve_object_dependencies(objects)
+    resolve_object_dependencies(objects, declared_names)
 
     return ParseResult(
         objects=sorted(objects, key=lambda obj: (obj.type.value, obj.object_id)),
         locations=locations,
+        declared_names=declared_names,
     )
 
 
