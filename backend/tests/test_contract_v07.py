@@ -241,6 +241,17 @@ def test_the_schema_result_must_cover_every_table_and_sequence():
     refused(data, f"the schema result must cover exactly the tables and sequences: {EMPLOYEES}")
 
 
+def test_an_empty_schema_result_is_refused_even_though_it_reads_ok():
+    """SchemaMigrationResult.ok is True for an empty list (all([]) is True), so the run, not ok,
+    is where every table and sequence must have its outcome (Aarsh's PR #13 review, 19 Nov)."""
+    data = sample()
+    expected = sorted(o["object_id"] for o in data["schema_result"]["objects"])
+    assert len(expected) == 6
+    data["schema_result"]["objects"] = []
+    assert SchemaMigrationResult.model_validate(data["schema_result"]).ok   # ok alone is not the gate
+    refused(data, "the schema result must cover exactly the tables and sequences: " + ", ".join(expected))
+
+
 def test_a_table_status_follows_its_schema_outcome():
     data = sample()
     schema = next(o for o in data["schema_result"]["objects"] if o["object_id"] == EMPLOYEES)
