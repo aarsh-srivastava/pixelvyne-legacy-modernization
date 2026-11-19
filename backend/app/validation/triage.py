@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.contracts.models import ExecutionResult, IRObject, ObjectType, TestCase, TestOutcome, TestStatus
-from app.migration.features import Handling, analyze_package, detect_features
+from app.migration.features import Handling, analyze_package, detect_features, known_names
 from app.validation.comparator import compare
 from app.validation.edge_catalogue import ACCEPTED_DIFFERENCES
 from app.validation.errors import HARNESS, categorize
@@ -88,11 +88,12 @@ def routing_reasons(objects: Iterable[IRObject]) -> dict[str, str]:
     objects = list(objects)
     packages = {o.name.lower(): analyze_package(o.source_code, [x.source_code for x in objects if x is not o])
                 for o in objects if o.type == ObjectType.PACKAGE}
+    names = known_names(objects)
     reasons = {}
     for obj in objects:
         if obj.type in (ObjectType.TABLE, ObjectType.SEQUENCE, ObjectType.PACKAGE):
             continue
-        report = detect_features(obj.source_code, package=obj.package, packages=packages)
+        report = detect_features(obj.source_code, package=obj.package, packages=packages, names=names)
         if report.handling is Handling.REVIEW:
             reasons[obj.object_id] = "routed to review: " + report.review_reason()
         elif report.handling is Handling.LLM:

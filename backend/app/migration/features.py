@@ -30,11 +30,24 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 
+from app.migration.allow_list import (
+    ALLOWED_FUNCTIONS,
+    ALLOWED_WORDS,
+    ORACLE_RESERVED,
+    RECOGNISED,
+    SYNTAX_WORDS,
+    UNRESOLVED,
+)
+
 
 class Handling(str, Enum):
     RULE = "rule"
     LLM = "llm"
     REVIEW = "review"
+
+
+#: A construct that is neither allow-listed nor recognised (PR 1, G3). Always REVIEW.
+UNKNOWN_CONSTRUCT = "UNKNOWN_CONSTRUCT"
 
 
 _ORDER = {Handling.RULE: 0, Handling.LLM: 1, Handling.REVIEW: 2}
@@ -45,6 +58,17 @@ class Finding:
     feature: str
     handling: Handling
     detail: str
+    #: 1-based line of the first occurrence in the object's source, and the words there
+    #: (PR 1, G3). Not part of a finding's identity: one finding per feature and detail.
+    line: int | None = field(default=None, compare=False)
+    text: str | None = field(default=None, compare=False)
+
+    @property
+    def state(self) -> str:
+        """Aarsh's three states: supported, recognised_unsupported or not_recognised."""
+        if self.feature == UNKNOWN_CONSTRUCT:
+            return "not_recognised"
+        return "supported" if self.handling is Handling.RULE else "recognised_unsupported"
 
 
 @dataclass
@@ -70,8 +94,9 @@ class FeatureReport:
             return None
         return "Unsupported: " + "; ".join(f.detail for f in review)
 
-    def add(self, feature: str, handling: Handling, detail: str) -> None:
-        finding = Finding(feature, handling, detail)
+    def add(self, feature: str, handling: Handling, detail: str, line: int | None = None,
+            text: str | None = None) -> None:
+        finding = Finding(feature, handling, detail, line, text)
         if finding not in self.findings:
             self.findings.append(finding)
 
@@ -81,34 +106,54 @@ class FeatureReport:
 _Q_CLOSE = {"[": "]", "{": "}", "(": ")", "<": ">"}
 
 
-def mask_oracle(source: str) -> str:
+def mask_oracle(source: str, *, keep_positions: bool = False) -> str:
     """Oracle source with comments removed and non-empty strings replaced by ``'x'``.
 
     An empty literal ``''`` stays as ``''`` (it matters: it is NULL in Oracle).
     Handles ``''`` escapes and q-quoting (``q'[...]'``, ``Q'{...}'`` and so on).
     Quoted identifiers are kept. Unterminated strings or comments raise ValueError.
+
+    With ``keep_positions=True`` every character keeps its offset (PR 1, line numbers):
+    a comment becomes spaces, a non-empty string becomes ``'xxx'`` of the same length,
+    and line breaks inside either are kept, so a match's line is its line in the source.
     """
     out: list[str] = []
+
+    def blank(text: str) -> str:
+        return re.sub(r"[^\n]", " ", text)
+
+    def masked_string(text: str) -> str:
+        if not keep_positions:
+            return "'x'"
+        inner = re.sub(r"[^\n]", "x", text[1:-1])
+        return "'" + inner + "'"
+
     i, n = 0, len(source)
     while i < n:
         ch, two = source[i], source[i:i + 2]
         if two == "--":
             end = source.find("\n", i)
-            i = n if end == -1 else end
-            out.append(" ")
+            end = n if end == -1 else end
+            out.append(blank(source[i:end]) if keep_positions else " ")
+            i = end
         elif two == "/*":
             end = source.find("*/", i + 2)
             if end == -1:
                 raise ValueError("unterminated /* comment")
+            out.append(blank(source[i:end + 2]) if keep_positions else " ")
             i = end + 2
-            out.append(" ")
-        elif ch in "qQ" and source[i + 1:i + 2] == "'" and i + 2 < n and not _word_before(source, i):
+        elif ch in "qQ" and source[i + 1:i + 2] == "'" and i + 2 < n and (
+            not _word_before(source, i) or (source[i - 1] in "nN" and not _word_before(source, i - 1))
+        ):  # q'[...]' and the national nq'[...]'; the n stays in the output
             open_ch = source[i + 2]
             close = _Q_CLOSE.get(open_ch, open_ch) + "'"
             end = source.find(close, i + 3)
             if end == -1:
                 raise ValueError("unterminated q-quoted string")
-            out.append("'x'" if end > i + 3 else "''")
+            if end > i + 3:
+                out.append(masked_string(source[i:end + 2]))
+            else:
+                out.append("''" + ("   " if keep_positions else ""))
             i = end + 2
         elif ch == "'":
             j = i + 1
@@ -121,7 +166,7 @@ def mask_oracle(source: str) -> str:
                         continue
                     break
                 j += 1
-            out.append("''" if j == i + 1 else "'x'")
+            out.append("''" if j == i + 1 else masked_string(source[i:j + 1]))
             i = j + 1
         elif ch == '"':
             end = source.find('"', i + 1)
@@ -133,6 +178,54 @@ def mask_oracle(source: str) -> str:
             out.append(ch)
             i += 1
     return "".join(out)
+
+
+def line_of(text: str, index: int) -> int:
+    """1-based line of ``index`` in ``text``."""
+    return text.count("\n", 0, index) + 1
+
+
+# --- unresolved semantics (Aarsh, 19 Nov) ------------------------------------------------
+
+_UNRESOLVED_CALL = re.compile(
+    r"(?<![\w$#.\"])(" + "|".join(re.escape(name) for name in sorted(UNRESOLVED)) + r")\s*\(", re.I
+)
+
+
+@dataclass(frozen=True)
+class SemanticRisk:
+    """One use of an allow-listed function whose Oracle and PostgreSQL semantics differ
+    (``allow_list.UNRESOLVED``). Routing is unchanged; the object needs human sign-off."""
+
+    function: str
+    line: int          # 1-based, in the object's own source
+    source_line: str   # that line, whitespace-normalised and shortened
+
+    def warning(self, object_id: str) -> str:
+        return (
+            f"Needs review: semantic risk in {object_id} at line {self.line}: {self.function}. "
+            f"{UNRESOLVED[self.function]} Semantic equivalence is not verified. Action: human review, "
+            f"or explicit acceptance of this known limitation, before deployment. Line: {self.source_line}"
+        )
+
+
+def semantic_risks(source: str) -> list[SemanticRisk]:
+    """Every call to an UNRESOLVED function, one per occurrence, in source order.
+
+    Strings and comments do not count. A qualified name (``pkg.greatest``) is not the
+    built-in. Unreadable source gives none: it is already routed to review.
+    """
+    try:
+        masked = mask_oracle(source, keep_positions=True)
+    except ValueError:
+        return []
+    lines = source.splitlines()
+    risks = []
+    for match in _UNRESOLVED_CALL.finditer(masked):
+        line = line_of(masked, match.start())
+        text = " ".join(lines[line - 1].split()) if line <= len(lines) else ""
+        risks.append(SemanticRisk(match.group(1).upper(), line, text if len(text) <= 160 else text[:157] + "..."))
+    return risks
 
 
 def _word_before(text: str, i: int) -> bool:
@@ -218,6 +311,20 @@ def _assigned_in(masked: str, name: str) -> bool:
     return False
 
 
+def _masked_or_as_written(source: str) -> str:
+    """Another object's source, masked; searched as written when it cannot be read (PR 1).
+
+    Unreadable code (an unterminated string) is routed to review on its own; it must not
+    stop the analysis of a package it may assign to. As written, a real ``pkg.var :=`` is
+    never missed; a name inside a string can only make a variable count as assigned, so it
+    is not inlined (the safe direction).
+    """
+    try:
+        return mask_oracle(source)
+    except ValueError:
+        return source
+
+
 def analyze_package(source: str, other_sources: Iterable[str] = ()) -> PackageSymbols:
     """Symbols of one package (spec and body together, as the parser keeps them)."""
     masked = mask_oracle(source)
@@ -227,7 +334,7 @@ def analyze_package(source: str, other_sources: Iterable[str] = ()) -> PackageSy
     name = names[0]
     sections = _sections(masked)
     members = frozenset(m.group(1).lower() for m in _MEMBER.finditer(masked))
-    others = [mask_oracle(s) for s in other_sources]
+    others = [_masked_or_as_written(s) for s in other_sources]
 
     variables: dict[str, PackageVariable] = {}
     other_declarations: list[str] = []
@@ -374,38 +481,230 @@ def detect_features(
     *,
     package: str | None = None,
     packages: Mapping[str, PackageSymbols] | None = None,
+    names: Iterable[str] | None = None,
 ) -> FeatureReport:
     """Findings for one object's Oracle source.
 
     ``package`` is the package this object belongs to (for members); ``packages`` maps
     package name to its symbols, for resolving ``pkg.name`` references anywhere.
+    ``names`` are the names of the uploaded objects (see ``known_names``): a call to one
+    of them is not an unknown construct. Without ``names`` every call to a function that
+    is not built in, declared here or a package member is reported as unknown (PR 1, G3:
+    the allow-list fails closed).
+
+    Each finding carries the line of its first occurrence in ``source``.
     """
     packages = {k.lower(): v for k, v in (packages or {}).items()}
     report = FeatureReport()
     try:
-        masked = mask_oracle(source)
+        masked = mask_oracle(source, keep_positions=True)
     except ValueError as exc:
         report.add("UNREADABLE", Handling.REVIEW, f"source could not be read ({exc})")
         return report
 
+    def where(match: re.Match) -> tuple[int, str]:
+        return line_of(masked, match.start()), " ".join(match.group(0).split())
+
     for feature, handling, pattern, detail in _PATTERNS:
-        if pattern.search(masked):
+        match = pattern.search(masked)
+        if match:
             if feature == "CONNECT_BY" and _SYS_CONNECT_BY_PATH.search(masked):
                 detail = f"{detail}; {CONNECT_BY_PATH_HINT}"
-            report.add(feature, handling, detail)
-    if any(_SELECT_INTO.search(piece) for piece in masked.split(";")):
-        report.add("SELECT_INTO", Handling.RULE, "SELECT ... INTO (raises NO_DATA_FOUND / TOO_MANY_ROWS)")
+            report.add(feature, handling, detail, *where(match))
+    select_into = _SELECT_INTO.search(masked)
+    if select_into and any(_SELECT_INTO.search(piece) for piece in masked.split(";")):
+        report.add("SELECT_INTO", Handling.RULE, "SELECT ... INTO (raises NO_DATA_FOUND / TOO_MANY_ROWS)",
+                   line_of(masked, select_into.start()), "SELECT ... INTO")
 
-    rownums = len(_ROWNUM.findall(masked))
-    if rownums:
+    rownum = _ROWNUM.search(masked)
+    if rownum:
+        rownums = len(_ROWNUM.findall(masked))
         top_n = _top_n_rownums(masked)
         if top_n == rownums:
-            report.add("ROWNUM_TOP_N", Handling.RULE, "ROWNUM top-N over an ordered subquery")
+            report.add("ROWNUM_TOP_N", Handling.RULE, "ROWNUM top-N over an ordered subquery", *where(rownum))
         else:
-            report.add("ROWNUM", Handling.REVIEW, "ROWNUM outside the top-N pattern")
+            report.add("ROWNUM", Handling.REVIEW, "ROWNUM outside the top-N pattern", *where(rownum))
+
+    for feature, pattern, detail in RECOGNISED:
+        match = pattern.search(masked)
+        if match:
+            report.add(feature, Handling.REVIEW, detail, *where(match))
 
     _package_references(masked, report, package and package.lower(), packages)
+    _unknown_constructs(masked, report, packages, names)
     return report
+
+
+def known_names(objects: Iterable) -> set[str]:
+    """Lower-case names an object's code may call or use: every uploaded object's name,
+    each package member as ``pkg.member`` and bare ``member``, and the schemas."""
+    found: set[str] = set()
+    for obj in objects:
+        found.add(obj.name.lower())
+        if getattr(obj, "package", None):
+            found.add(f"{obj.package.lower()}.{obj.name.lower()}")
+        schema = obj.object_id.split(":", 1)[1].split(".")[0]
+        found.add(schema.lower())
+    return found
+
+
+_WORD = re.compile(r'"[^"]*"|[A-Za-z_][\w$#]*')
+_ID = r'"[^"]+"|[A-Za-z_][\w$#]*'  # an identifier, quoted or not
+_DECLARED = [
+    re.compile(rf"(?:^|[(,;]|\bIS\b|\bAS\b|\bDECLARE\b|\bBEGIN\b)\s*({_ID})\s+(?:CONSTANT\s+)?"
+               r"(?:IN\s+OUT\s+|IN\s+|OUT\s+)?(?:NOCOPY\s+)?[A-Za-z_][\w$#.%]*", re.I | re.M),
+    re.compile(rf"\b(?:TYPE|SUBTYPE|CURSOR)\s+({_ID})", re.I),
+    re.compile(rf"\bFOR\s+({_ID})\s+IN\b", re.I),
+    re.compile(rf"<<\s*({_ID})\s*>>"),
+    re.compile(rf"\b(?:FUNCTION|PROCEDURE|TRIGGER|VIEW)\s+(?:(?:{_ID})\s*\.\s*)?({_ID})", re.I),
+    re.compile(rf"(?:\bFROM|\bJOIN|,)\s+[A-Za-z_][\w$#.]*\s+({_ID})", re.I),  # table aliases
+]
+_CURSOR_ATTRIBUTES = {"FOUND", "NOTFOUND", "ISOPEN", "ROWCOUNT", "BULK_ROWCOUNT", "BULK_EXCEPTIONS"}
+#: Function names a pattern above already reports (so they are recognised, never unknown).
+_PATTERN_FUNCTIONS = re.compile(
+    r"^(?:MONTHS_BETWEEN|NEXT_DAY|LISTAGG|NVL2|INSTR|SYS_GUID|REGEXP_\w+|SYS_CONNECT_BY_PATH|"
+    r"RAISE_APPLICATION_ERROR|NVL|DECODE|TRUNC|ADD_MONTHS|LAST_DAY)$", re.I)
+
+
+def _unknown_constructs(
+    masked: str, report: FeatureReport, packages: Mapping[str, PackageSymbols], names: Iterable[str] | None
+) -> None:
+    """UNKNOWN_CONSTRUCT for reserved words, calls and attributes that are not allow-listed."""
+    # Names compare the way Oracle compares them: unquoted names fold to upper case, quoted
+    # names are exact ("mystery" and "MYSTERY" are different; MYSTERY and "MYSTERY" are the
+    # same). Uploaded names arrive case-folded (normalize_identifier), so they are treated as
+    # unquoted; a quoted mixed-case object in the upload therefore fails closed (review).
+    known = {n.upper() for n in (names or ())} | {k.upper() for k in packages}
+    known |= {member.upper() for pkg in packages.values() for member in pkg.members}
+    declared = {_canonical(m.group(1)) for pattern in _DECLARED for m in pattern.finditer(masked)}
+    package_members = {k.upper(): {m.upper() for m in pkg.members} for k, pkg in packages.items()}
+
+    def unknown(index: int, text: str, detail: str) -> None:
+        report.add(UNKNOWN_CONSTRUCT, Handling.REVIEW, detail, line_of(masked, index), text)
+
+    for match in _WORD.finditer(masked):
+        word = match.group(0)
+        before = masked[:match.start()].rstrip()
+        if before.endswith((".", "%", ":")):
+            continue  # part of a qualified name (checked with its first part), an attribute or a bind
+        upper = word.upper()
+        after = masked[match.end():]
+        # INSERT INTO t (a, b) and REFERENCES t (a) name a table and its columns, not a call.
+        table_context = re.search(r"\b(?:INTO|REFERENCES|TABLE)$", before, re.I) is not None
+        chain = _CHAIN.match(after)
+        if chain:
+            # The complete qualified identifier, resolved as a whole: schema.routine,
+            # package.member or schema.package.member (quoted parts included).
+            written = [word, *_PART.findall(chain.group(1))]
+            parts = [_canonical(p) for p in written]
+            # A system package (DBMS_x.y, SYS.UTL_x.y) is reported by its own finding, which
+            # needs the unquoted package name followed by a dot: so only an unquoted part
+            # before the last one counts, never the called name itself (utl_thing( is unknown).
+            system = any(w.upper().startswith(("DBMS_", "UTL_")) for w in written[:-1])
+            # t2.id(+) is the old outer-join marker (OUTER_JOIN_PLUS reports it), not a call.
+            outer_join = chain.group(2) and re.match(r"\(\s*\+\s*\)", after[chain.start(2):])
+            if chain.group(2) and not table_context and not system and not outer_join and not _qualified_call_known(
+                parts, known, package_members, declared
+            ):
+                text = ".".join(written)
+                unknown(match.start(), text + "(",
+                        f"call to {text}, which is not in the upload or the allow-list")
+            continue
+        called = re.match(r"\s*\(", after) is not None and not table_context
+        if word.startswith('"'):
+            # A quoted call is a call: it fails closed unless that exact identifier is known.
+            name = _canonical(word)
+            if called and not (name in known or name in declared or name in ALLOWED_FUNCTIONS):
+                unknown(match.start(), f"{word}(", f"function {word} is not on the allow-list")
+            continue
+        if upper == "SQL" and re.match(r"\s*%", after):
+            continue  # SQL%ROWCOUNT and friends: IMPLICIT_CURSOR_ATTRIBUTE reports it
+        if upper in ORACLE_RESERVED:
+            if upper not in ALLOWED_WORDS and not _recognised_at(report, upper):
+                unknown(match.start(), upper, f"reserved word {upper} is not on the allow-list")
+            continue
+        if called and not (
+            upper in SYNTAX_WORDS or upper in ALLOWED_FUNCTIONS or _PATTERN_FUNCTIONS.match(upper)
+            or upper in known or upper in declared
+        ):
+            unknown(match.start(), f"{upper}(", f"function {upper} is not on the allow-list")
+
+    for match in re.finditer(r"([A-Za-z_][\w$#]*)\s*%\s*([A-Za-z_]+)", masked):
+        prefix, attribute = match.group(1).upper(), match.group(2).upper()
+        if attribute in ("TYPE", "ROWTYPE"):
+            continue  # %TYPE / %ROWTYPE are a rule
+        if prefix == "SQL" and attribute in _CURSOR_ATTRIBUTES:
+            continue  # reported as IMPLICIT_CURSOR_ATTRIBUTE
+        if attribute in _CURSOR_ATTRIBUTES:
+            report.add("CURSOR_ATTRIBUTE", Handling.LLM, "explicit cursor attribute (%FOUND, %NOTFOUND ...)",
+                       line_of(masked, match.start()), f"{match.group(1)}%{match.group(2)}")
+        else:
+            unknown(match.start(), f"%{attribute}", f"attribute %{attribute} is not on the allow-list")
+
+
+#: Reserved words that belong to a feature already reported for the object (so the object
+#: keeps that feature's route, e.g. Gemini for collections and explicit cursors).
+_PART_OF = {
+    "INDEX": "COLLECTION",
+    "TABLE": "COLLECTION",
+    "CURSOR": "EXPLICIT_CURSOR",
+    "FETCH": "EXPLICIT_CURSOR",
+    "CURRENT": "EXPLICIT_CURSOR",
+}
+
+
+#: One to three more parts after a name (".b", ".b.c", ".b.c.d"), then maybe "(".
+_PART = re.compile(r'"[^"]*"|[A-Za-z_][\w$#]*')
+#: Collection methods that take arguments: the only calls accepted on a declared name
+#: (v.EXTEND(1), v.EXISTS(i)). Anything else on a declared record or collection is unknown.
+_COLLECTION_METHODS = frozenset({"EXISTS", "DELETE", "EXTEND", "TRIM", "PRIOR", "NEXT"})
+_CHAIN = re.compile(r'((?:\s*\.\s*(?:"[^"]*"|[A-Za-z_][\w$#]*)){1,3})\s*(\()?')
+
+
+def _canonical(identifier: str) -> str:
+    """Oracle's view of an identifier: unquoted folds to upper case, quoted stays exact."""
+    if len(identifier) >= 2 and identifier[0] == identifier[-1] == '"':
+        return identifier[1:-1]
+    return identifier.upper()
+
+
+def _qualified_call_known(
+    parts: list[str], known: set[str], packages: Mapping[str, set[str]], declared: set[str]
+) -> bool:
+    """Whether a qualified call resolves as a whole: a known qualifier alone is not enough.
+
+    ``parts`` are canonical (see _canonical); ``packages`` maps a canonical package name to its
+    canonical member names.
+
+    Accepted: a collection method with arguments on a declared name (v.EXTEND(1),
+    v.EXISTS(i), see _COLLECTION_METHODS; any other call on a declared record or collection
+    is unknown); ``pkg.member`` for a package in ``packages`` (an undeclared
+    member is reported by _package_references); ``pkg.member`` from the upload;
+    ``schema.routine`` whose schema and routine are both in the upload; and
+    ``schema.pkg.member`` whose schema is in the upload and whose member is declared in the
+    package (from ``packages``, or ``pkg.member`` in the upload).
+    """
+    if parts[0] in declared:
+        return len(parts) == 2 and parts[1] in _COLLECTION_METHODS
+    if len(parts) == 2:
+        head, last = parts
+        if head in packages:
+            return True  # pkg.member: _package_references reports an undeclared member
+        return f"{head}.{last}" in known or (head in known and last in known)
+    if len(parts) == 3:
+        schema, package, member = parts
+        if package in packages:
+            return schema in known and member in packages[package]
+        return schema in known and f"{package}.{member}" in known
+    return False
+
+
+def _recognised_at(report: FeatureReport, word: str) -> bool:
+    """A reserved word some finding already reports (ROWID, GOTO, MINUS, INTERSECT ...)."""
+    return any(
+        word in re.findall(r"[A-Z_$#]+", (f.text or "").upper()) or f.feature in (word, _PART_OF.get(word))
+        for f in report.findings
+    )
 
 
 def _package_references(
