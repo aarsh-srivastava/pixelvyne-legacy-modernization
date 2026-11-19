@@ -29,7 +29,8 @@ _NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
 
 OUTCOME_TEXT = {
     RepairOutcome.PASSED: "Equivalent",
-    RepairOutcome.PASSED_NEEDS_REVIEW: "Equivalent, needs sign-off",
+    # Not "equivalent": a person must still sign it off (e.g. unverified semantics, Aarsh 19 Nov).
+    RepairOutcome.PASSED_NEEDS_REVIEW: "Validation passed — semantic sign-off required",
     RepairOutcome.NEEDS_HUMAN: "Needs a human",
 }
 OUTCOME_CLASS = {
@@ -115,8 +116,8 @@ def _attempt_result(a: AttemptRecord) -> str:
 
 def _summary_html(s: ReportSummary) -> str:
     tiles = [
-        ("Objects equivalent", f"{s.equivalent + s.needs_review} / {s.objects}",
-         f"{s.needs_review} need sign-off" if s.needs_review else "all tests match Oracle"),
+        ("Objects passing validation", f"{s.equivalent + s.needs_review} / {s.objects}",
+         f"{s.needs_review} need semantic sign-off" if s.needs_review else "all tests match Oracle"),
         ("Tests matching Oracle", f"{s.tests_same} / {s.tests_total}", "in the final version of each object"),
         ("Automatic repairs", str(s.repairs), f"{s.repaired_objects} objects fixed by the repair loop"),
         ("Needs a human", str(s.needs_human), "after 3 attempts, or tests could not be judged"),
@@ -193,6 +194,17 @@ def _evidence_html(run: RepairRun, descriptions: dict[str, str]) -> str:
     )
 
 
+def _review_html(run: RepairRun) -> str:
+    """What the converter asked a person to sign off (its "Needs review:" warnings)."""
+    conv = run.final_conversion
+    warnings = conv.warnings if conv else []
+    items = [w.removeprefix("Needs review: ") for w in warnings if w.startswith("Needs review: ")]
+    if not items:
+        return ""
+    lis = "".join(f"<li>{escape(item)}</li>" for item in items)
+    return f'<div class="banner"><b>Needs sign-off before deployment</b><ul class="review">{lis}</ul></div>'
+
+
 def _object_html(run: RepairRun, descriptions: dict[str, str]) -> str:
     code = ""
     if run.final_conversion and run.final_conversion.target_code:
@@ -204,7 +216,7 @@ def _object_html(run: RepairRun, descriptions: dict[str, str]) -> str:
         f'<section class="obj" id="{escape(_anchor(run))}">'
         f'<div class="obj-h"><h3><code>{escape(run.object_id)}</code></h3>'
         f'<span class="pill {OUTCOME_CLASS[run.outcome]}">{escape(OUTCOME_TEXT[run.outcome])}</span></div>'
-        f'<p class="muted">{escape(run.reason)}</p>'
+        f'<p class="muted">{escape(run.reason)}</p>{_review_html(run)}'
         f"{_attempts_html(run)}{_evidence_html(run, descriptions)}{code}</section>"
     )
 
@@ -249,7 +261,7 @@ td code{white-space:pre-wrap;word-break:break-word}a{color:var(--accent)}
 .att-h .res{color:var(--ink)}.fbwrap{margin-top:6px}.fbk{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 pre{margin:4px 0 0;background:var(--code);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre-wrap}
 details{margin-top:14px}summary{cursor:pointer;font-weight:600}pre.code{white-space:pre}
-footer{color:var(--muted);font-size:.85rem}
+footer{color:var(--muted);font-size:.85rem}.obj .banner{margin-top:12px}.review{margin:6px 0 0;padding-left:20px}
 @media (max-width:720px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 """
 

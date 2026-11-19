@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Iterable
 
 from app.config import settings
@@ -25,6 +26,8 @@ from app.contracts import (
     parse_object_id,
     TriggerInfo,
 )
+from app.migration.features import mask_oracle
+
 DEFAULT_SCHEMA = default_schema(settings.ORACLE_USER)
 
 # ---------------------------------------------------------------------------
@@ -86,7 +89,8 @@ def remove_comments(sql: str) -> str:
     def replace(match: re.Match) -> str:
         if match.group(1) or match.group(2):
             return match.group(0)
-        return ""
+        # Keep a block comment's line breaks, so line numbers after it stay right.
+        return "\n" * match.group(0).count("\n")
 
     return pattern.sub(replace, sql)
 
@@ -98,16 +102,26 @@ def remove_comments(sql: str) -> str:
 def split_statements(sql: str) -> list[str]:
     """Split SQL statements on semicolons and PL/SQL units on slash lines."""
 
-    statements: list[str] = []
+    return [statement for statement, _ in split_statements_with_lines(sql)]
+
+
+def split_statements_with_lines(sql: str) -> list[tuple[str, int]]:
+    """Like split_statements, with the 1-based line each statement starts on."""
+
+    statements: list[tuple[str, int]] = []
     buffer: list[str] = []
+    start = 1
 
     def flush() -> None:
         statement = "\n".join(buffer).strip()
         if statement:
-            statements.append(statement)
+            first = next(i for i, text in enumerate(buffer) if text.strip())
+            statements.append((statement, start + first))
         buffer.clear()
 
-    for line in sql.splitlines():
+    for number, line in enumerate(sql.splitlines(), start=1):
+        if not buffer:
+            start = number
         if line.strip() == "/":
             flush()
             continue
@@ -306,6 +320,19 @@ def extract_return_type(source: str, kind: str) -> str | None:
 
 
 
+def _blank_strings(source: str) -> str:
+    """``source`` with string literals and comments blanked, offsets kept (PR 1, G2).
+
+    Uses the same masker as feature detection, so q-quoted strings (``q'[it's]'``,
+    ``nq'{...}'``) are handled too. Unreadable source (an unterminated string) falls back
+    to blanking ordinary literals; feature detection routes such an object to review.
+    """
+    try:
+        return mask_oracle(source, keep_positions=True)
+    except ValueError:
+        return re.sub(r"'(?:''|[^'])*'", "''", source)
+
+
 def extract_table_references(source: str) -> tuple[list[str], list[str]]:
     """Extract table read and write references from Oracle SQL/PLSQL.
 
@@ -315,6 +342,10 @@ def extract_table_references(source: str) -> tuple[list[str], list[str]]:
 
     reads: set[str] = set()
     writes: set[str] = set()
+
+    # Words inside string literals are not table references: a message such as
+    # 'Loaded from staging' must not become a dependency on "staging" (PR 1, G2).
+    source = _blank_strings(source)
 
     # Support regular and quoted Oracle identifiers.
     identifier = r'(?:"[^"]+"|[\w$#]+)'
@@ -546,6 +577,9 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
 
     for obj in objects:
         dependencies: set[str] = set()
+        # Every scan below reads the code with strings and comments blanked (q-quotes too),
+        # so a name inside a message never becomes a dependency (PR 1, G2).
+        code = _blank_strings(obj.source_code)
 
         # 1. Table reads and writes, including foreign-key references.
         for reference in [*obj.reads_tables, *obj.writes_tables]:
@@ -556,7 +590,7 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
         # 2. Sequence NEXTVAL and CURRVAL references.
         for match in re.finditer(
             r'\b([\w$#]+(?:\s*\.\s*[\w$#]+)?)\s*\.\s*(?:NEXTVAL|CURRVAL)\b',
-            obj.source_code,
+            code,
             re.IGNORECASE,
         ):
             reference = re.sub(r"\s+", "", match.group(1))
@@ -575,7 +609,7 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
         # 3. Explicit package-qualified references.
         for match in re.finditer(
             r'\b([A-Za-z_$#][\w$#]*)\s*\.\s*([A-Za-z_$#][\w$#]*)\b',
-            obj.source_code,
+            code,
             re.IGNORECASE,
         ):
             package_name = normalize_name(match.group(1))
@@ -593,7 +627,9 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
             if dependency != obj.object_id:
                 dependencies.add(dependency)
 
-        # 4. Unqualified routine calls inside the same package.
+        # 4. Unqualified routine calls inside the same package, with or without arguments
+        # (flush(1) or flush;), as in 4b. A qualified other_pkg.flush( is not this package's
+        # member; step 3 handles qualified names (PR 1, G2).
         current_package = obj.package
 
         if current_package:
@@ -604,8 +640,8 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
                     continue
 
                 if re.search(
-                    rf'\b{re.escape(routine_name)}\s*\(',
-                    obj.source_code,
+                    rf"(?<![\w$#.\"]){re.escape(routine_name)}\s*(?:\(|;)",
+                    code,
                     re.IGNORECASE,
                 ):
                     dependency = resolve_routine(
@@ -615,7 +651,19 @@ def resolve_object_dependencies(objects: list[IRObject]) -> None:
                     if dependency and dependency != obj.object_id:
                         dependencies.add(dependency)
 
-        # 5. Trigger attachment is a dependency, not a body write.
+        # 4b. Calls to standalone (non-package) functions and procedures, with or
+        # without arguments: calc_bonus(102) or log_run;. (PR 1, G2 and G10 groundwork.)
+        for (package_name, routine_name), candidates in routines.items():
+            if package_name is not None or len(candidates) != 1:
+                continue
+            if candidates[0] == obj.object_id:
+                continue
+            if re.search(
+                rf"(?<![\w$#.\"]){re.escape(routine_name)}\s*(?:\(|;)",
+                code,
+                re.IGNORECASE,
+            ):
+                dependencies.add(candidates[0])
 
         # 5. Trigger attachment is a dependency, not a body write.
         if obj.type == ObjectType.TRIGGER:
@@ -735,6 +783,8 @@ def extract_package_members(
                 "kind": kind,
                 "name": name,
                 "source": member_source,
+                # Offset of the member in the source passed in (for line numbers).
+                "start": body_match.start() + match.start(),
             }
         )
 
@@ -744,8 +794,86 @@ def extract_package_members(
 # 8. Main parser
 # ---------------------------------------------------------------------------
 
+@dataclass(frozen=True)
+class SourceLocation:
+    """Where an object's definition starts: file and 1-based line."""
+
+    file: str
+    line: int
+
+
+@dataclass(frozen=True)
+class DuplicateDefinition:
+    """One object defined more than once (G1)."""
+
+    object_id: str
+    places: tuple[SourceLocation, ...]   # sorted by file, then line
+    identical: bool                      # every definition has the same text
+
+
+class DuplicateDefinitionError(ValueError):
+    """The upload defines the same object more than once.
+
+    Which definition is meant cannot be guessed safely, so nothing is parsed.
+    Every duplicate is listed, sorted, so the message is the same whatever the
+    upload order. One package spec plus one package body is not a duplicate.
+    """
+
+    def __init__(self, duplicates: list[DuplicateDefinition]):
+        self.duplicates = sorted(duplicates, key=lambda d: d.object_id)
+        lines = ["Duplicate definitions: each object must be defined once."]
+        for dup in self.duplicates:
+            places = "; ".join(f"{p.file} line {p.line}" for p in dup.places)
+            same = " (identical)" if dup.identical else ""
+            lines.append(f"  {dup.object_id} is defined in {len(dup.places)} places: {places}{same}")
+        lines.append("Remove the extra definitions and run again.")
+        super().__init__("\n".join(lines))
+
+
+@dataclass(frozen=True)
+class ParseResult:
+    """The parser's output: IR objects plus where each one starts."""
+
+    objects: list[IRObject]
+    locations: dict[str, SourceLocation] = field(default_factory=dict)  # object_id -> start
+
+
+def _line_at(text: str, index: int, first_line: int) -> int:
+    return first_line + text.count("\n", 0, index)
+
+
+def _find_duplicates(discovered: list[dict]) -> list[DuplicateDefinition]:
+    """Definitions sharing (type, name, spec-or-body), across files or within one."""
+    groups: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
+    for item in discovered:
+        groups[(TYPE_MAP[item["kind"]].value, item["name"], item["kind"])].append(item)
+    duplicates = []
+    for (object_type, name, _), items in groups.items():
+        if len(items) < 2:
+            continue
+        texts = {re.sub(r"\s+", " ", item["source"]).strip() for item in items}
+        duplicates.append(
+            DuplicateDefinition(
+                object_id=make_object_id(object_type, name, schema=DEFAULT_SCHEMA),
+                places=tuple(sorted((SourceLocation(i["filename"], i["line"]) for i in items),
+                                    key=lambda p: (p.file, p.line))),
+                identical=len(texts) == 1,
+            )
+        )
+    return duplicates
+
+
 def parse_sources(sources: dict[str, str]) -> list[IRObject]:
     """Parse multiple Oracle source files into a list of IR objects."""
+
+    return parse_sources_detailed(sources).objects
+
+
+def parse_sources_detailed(sources: dict[str, str]) -> ParseResult:
+    """parse_sources, plus each object's starting file and line.
+
+    Raises DuplicateDefinitionError when an object is defined more than once.
+    """
 
     discovered: list[dict] = []
 
@@ -753,7 +881,7 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
     for filename, content in sources.items():
         cleaned = remove_comments(content)
 
-        for statement in split_statements(cleaned):
+        for statement, first_line in split_statements_with_lines(cleaned):
             match = CREATE_PATTERN.search(statement)
             if not match:
                 continue
@@ -767,8 +895,13 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
                     "kind": kind,
                     "source": statement.strip(),
                     "filename": filename,
+                    "line": _line_at(statement, match.start(), first_line),
                 }
             )
+
+    duplicates = _find_duplicates(discovered)
+    if duplicates:
+        raise DuplicateDefinitionError(duplicates)
 
     known_objects = {item["name"] for item in discovered}
 
@@ -786,12 +919,15 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
                 **item,
                 "kind": kind,
                 "source_parts": [item["source"]],
+                "part_places": [(item["filename"], item["line"])],
                 "filename": item["filename"],
             }
         else:
             merged[key]["source_parts"].append(item["source"])
+            merged[key]["part_places"].append((item["filename"], item["line"]))
 
     objects: list[IRObject] = []
+    locations: dict[str, SourceLocation] = {}
 
     # Second pass: extract metadata and construct IR.
     for item in merged.values():
@@ -824,13 +960,15 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
         # That is the same logical IR object, so remove self-dependency.
         dependencies = [dep for dep in dependencies if dep != name]
 
+        object_id = make_object_id(
+            object_type.value,
+            name,
+            schema=DEFAULT_SCHEMA,
+        )
+        locations[object_id] = SourceLocation(item["filename"], item["line"])
         objects.append(
             IRObject(
-                object_id=make_object_id(
-                    object_type.value,
-                    name,
-                    schema=DEFAULT_SCHEMA,
-                ),
+                object_id=object_id,
                 name=name,
                 type=object_type,
                 package=None,
@@ -857,14 +995,18 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
                     member_source
                 )
 
+                member_id = make_object_id(
+                    member_type.value,
+                    member_name,
+                    schema=DEFAULT_SCHEMA,
+                    package=name,
+                )
+                member_place = _member_location(item, member["start"])
+                if member_id not in locations:
+                    locations[member_id] = member_place
                 objects.append(
                     IRObject(
-                        object_id=make_object_id(
-                            member_type.value,
-                            member_name,
-                            schema=DEFAULT_SCHEMA,
-                            package=name,
-                        ),
+                        object_id=member_id,
                         name=member_name,
                         type=member_type,
                         package=name,
@@ -891,7 +1033,21 @@ def parse_sources(sources: dict[str, str]) -> list[IRObject]:
 
     resolve_object_dependencies(objects)
 
-    return sorted(objects, key=lambda obj: (obj.type.value, obj.object_id))
+    return ParseResult(
+        objects=sorted(objects, key=lambda obj: (obj.type.value, obj.object_id)),
+        locations=locations,
+    )
+
+
+def _member_location(item: dict, start: int) -> SourceLocation:
+    """File and line of a package member, from its offset in the merged package source."""
+    offset = 0
+    for part, (filename, first_line) in zip(item["source_parts"], item["part_places"], strict=True):
+        end = offset + len(part)
+        if start < end:
+            return SourceLocation(filename, _line_at(part, start - offset, first_line))
+        offset = end + 2  # the "\n\n" between parts
+    raise ValueError("member offset outside the package source")  # pragma: no cover
 
 
 def parse_file(filename: str, content: str) -> list[IRObject]:

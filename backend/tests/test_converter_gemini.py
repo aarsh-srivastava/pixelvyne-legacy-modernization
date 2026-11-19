@@ -218,7 +218,8 @@ def test_translator_gaps_never_reach_gemini(objects):
     converter, fake, deployer = make(objects, reply=answer())
     result = converter.convert(objects["procedure:legacy.bad_call"])
     assert fake.calls == [] and deployer.calls == []
-    assert result.compile_error == "Not converted: call to unknown routine mystery_proc"
+    # PR 1 (G3): caught by detection (review), so it never reaches the translator or Gemini.
+    assert result.compile_error == "Unsupported: function MYSTERY_PROC is not on the allow-list"
     assert result.tool is ConversionTool.SQLGLOT
 
 

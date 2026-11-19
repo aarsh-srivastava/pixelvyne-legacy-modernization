@@ -225,7 +225,7 @@ def test_words_in_strings_and_comments_do_not_count():
       log_it(q'[it's ROWNUM ]' || 'done');
     END;
     """
-    report = detect_features(code)
+    report = detect_features(code, names={"log_it"})  # log_it is an uploaded routine (PR 1, G3)
     assert report.handling is Handling.RULE
     assert report.features == {"CONCAT"}
 

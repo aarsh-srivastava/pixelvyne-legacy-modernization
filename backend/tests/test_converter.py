@@ -128,9 +128,14 @@ def test_llm_only_constructs_are_not_converted(objects):
 
 
 def test_translator_gaps_are_reported(objects):
-    result = converter_with(objects).convert(objects["procedure:legacy.bad_call"])
-    assert not result.compiled_ok
-    assert result.compile_error == "Not converted: call to unknown routine mystery_proc"
+    # PR 1 (G3): a call to a routine that is not in the upload is now caught by detection,
+    # before the translator, and routed to review. The translator's own check ("call to
+    # unknown routine") stays as a backstop and is unit-tested in test_plsql_translator.py.
+    deployer = FakeDeployer()
+    result = converter_with(objects, deployer).convert(objects["procedure:legacy.bad_call"])
+    assert not result.compiled_ok and deployer.calls == []
+    assert result.compile_error == "Unsupported: function MYSTERY_PROC is not on the allow-list"
+    assert result.needs_review is True
 
 
 def test_views_with_rules_are_deployed(objects):
@@ -254,7 +259,8 @@ def test_whole_sample_in_dependency_order(sandbox, objects):
 #: The Gemini-route object: no deterministic rule exists (CONNECT BY), so this converter,
 #: built without Gemini, cannot convert it. test_validation_7b covers it with a recorded answer.
 GEMINI_ROUTE = {"view:legacy.org_chart"}
-#: Deployed, but flagged for human sign-off (a parameter default PostgreSQL rejects was dropped).
+#: Deployed, but flagged for human sign-off (a parameter default PostgreSQL rejects was dropped;
+#: since PR 1 also GREATEST's unresolved NULL semantics).
 FLAGGED_FOR_REVIEW = {"procedure:legacy.monthly_payroll"}
 
 
