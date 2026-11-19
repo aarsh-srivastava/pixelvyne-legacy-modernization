@@ -1,0 +1,3133 @@
+{
+  "contract_version": "0.7",
+  "run_id": "sample-20261117090326",
+  "status": "completed",
+  "started_at": "2026-11-17T09:03:26.697048Z",
+  "finished_at": "2026-11-17T09:03:27.146898Z",
+  "engine": "OracleToPostgresConverter + repair loop (scripts/build_run_fixture.py; Gemini off)",
+  "stand_in": false,
+  "oracle_answers": "recorded",
+  "options": {
+    "objects": null,
+    "gemini": false,
+    "gemini_request_budget": 0,
+    "with_edge_cases": false,
+    "max_repair_attempts": 3
+  },
+  "sources": [
+    {
+      "name": "01_schema.sql",
+      "sha256": "87842e7d50f57c68ec75cbb058dd85a5f9f85be4033ea2dbf38b385e06afbb4c",
+      "chars": 1324
+    },
+    {
+      "name": "02_seed_data.sql",
+      "sha256": "b02ab5e2e34f52b9d9e2fcf9c9b9069fbf61d66facb4fc5bc97800c6c832b33a",
+      "chars": 2008
+    },
+    {
+      "name": "03_payroll_pkg.sql",
+      "sha256": "e4d4fd37b56deff488d6e634fd16c1cc1301755e0ee79300ff3ea689292c97da",
+      "chars": 970
+    },
+    {
+      "name": "04_functions.sql",
+      "sha256": "d445dfb6eba7f54f22ec7fa901fe6b793b697abc430ff5bf1d9851f6d74fe28e",
+      "chars": 1380
+    },
+    {
+      "name": "05_procedures.sql",
+      "sha256": "438247cb11e026906b421fba8b2a26e72d94c75a0f9cc11e9d0256546093c684",
+      "chars": 2914
+    },
+    {
+      "name": "06_triggers.sql",
+      "sha256": "2f33f39663e89090aee94a9eace7aacedcdba645dbb1bbd43ea53b6c9532d1bb",
+      "chars": 602
+    },
+    {
+      "name": "07_views.sql",
+      "sha256": "c8836e98eeed8c65f44cf4e15e6002ab0d750c6aeca08b56c7f248dc42f33f33",
+      "chars": 423
+    }
+  ],
+  "discovered": [
+    "function:legacy.get_emp_grade",
+    "function:legacy.payroll_pkg.net_pay",
+    "function:legacy.top_earners",
+    "package:legacy.payroll_pkg",
+    "procedure:legacy.apply_raise",
+    "procedure:legacy.calc_bonus",
+    "procedure:legacy.monthly_payroll",
+    "procedure:legacy.payroll_pkg.close_month",
+    "sequence:legacy.payroll_run_seq",
+    "sequence:legacy.salary_audit_seq",
+    "table:legacy.departments",
+    "table:legacy.employees",
+    "table:legacy.payroll_runs",
+    "table:legacy.salary_audit",
+    "trigger:legacy.emp_salary_audit_trg",
+    "view:legacy.org_chart"
+  ],
+  "schema_result": {
+    "mode": "prepared",
+    "migrator": "PreparedTargetSchema",
+    "database": "target",
+    "objects": [
+      {
+        "object_id": "table:legacy.departments",
+        "status": "present",
+        "reason": "present in public.departments as the Oracle DDL defines it (the 2 columns with their types, NOT NULL and defaults, the primary, unique and foreign keys) with the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+        "definition": {
+          "object_id": "table:legacy.departments",
+          "target_schema": "public",
+          "target_name": "departments",
+          "columns": [
+            {
+              "name": "dept_id",
+              "oracle_type": "NUMBER(6)",
+              "pg_type": "numeric(6,0)",
+              "nullable": false,
+              "default": null
+            },
+            {
+              "name": "dept_name",
+              "oracle_type": "VARCHAR2(60)",
+              "pg_type": "character varying(60)",
+              "nullable": false,
+              "default": null
+            }
+          ],
+          "primary_key": [
+            "dept_id"
+          ],
+          "unique": [],
+          "foreign_keys": []
+        },
+        "rows_copied": null,
+        "parity": null
+      },
+      {
+        "object_id": "table:legacy.employees",
+        "status": "present",
+        "reason": "present in public.employees as the Oracle DDL defines it (the 9 columns with their types, NOT NULL and defaults, the primary, unique and foreign keys) with the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+        "definition": {
+          "object_id": "table:legacy.employees",
+          "target_schema": "public",
+          "target_name": "employees",
+          "columns": [
+            {
+              "name": "emp_id",
+              "oracle_type": "NUMBER(6)",
+              "pg_type": "numeric(6,0)",
+              "nullable": false,
+              "default": null
+            },
+            {
+              "name": "full_name",
+              "oracle_type": "VARCHAR2(100)",
+              "pg_type": "character varying(100)",
+              "nullable": false,
+              "default": null
+            },
+            {
+              "name": "email",
+              "oracle_type": "VARCHAR2(100)",
+              "pg_type": "character varying(100)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "dept_id",
+              "oracle_type": "NUMBER(6)",
+              "pg_type": "numeric(6,0)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "manager_id",
+              "oracle_type": "NUMBER(6)",
+              "pg_type": "numeric(6,0)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "hire_date",
+              "oracle_type": "DATE",
+              "pg_type": "timestamp(0) without time zone",
+              "nullable": false,
+              "default": null
+            },
+            {
+              "name": "base_salary",
+              "oracle_type": "NUMBER(10, 2)",
+              "pg_type": "numeric(10,2)",
+              "nullable": false,
+              "default": null
+            },
+            {
+              "name": "perf_rating",
+              "oracle_type": "VARCHAR2(1)",
+              "pg_type": "character varying(1)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "status",
+              "oracle_type": "VARCHAR2(10)",
+              "pg_type": "character varying(10)",
+              "nullable": false,
+              "default": "'ACTIVE'::character varying"
+            }
+          ],
+          "primary_key": [
+            "emp_id"
+          ],
+          "unique": [],
+          "foreign_keys": [
+            {
+              "name": "employees_dept_id_fkey",
+              "columns": [
+                "dept_id"
+              ],
+              "ref_table": "table:legacy.departments",
+              "ref_columns": [
+                "dept_id"
+              ],
+              "on_delete": "no_action"
+            },
+            {
+              "name": "employees_manager_id_fkey",
+              "columns": [
+                "manager_id"
+              ],
+              "ref_table": "table:legacy.employees",
+              "ref_columns": [
+                "emp_id"
+              ],
+              "on_delete": "no_action"
+            }
+          ]
+        },
+        "rows_copied": null,
+        "parity": null
+      },
+      {
+        "object_id": "table:legacy.payroll_runs",
+        "status": "present",
+        "reason": "present in public.payroll_runs as the Oracle DDL defines it (the 6 columns with their types, NOT NULL and defaults, the primary, unique and foreign keys) with the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+        "definition": {
+          "object_id": "table:legacy.payroll_runs",
+          "target_schema": "public",
+          "target_name": "payroll_runs",
+          "columns": [
+            {
+              "name": "run_id",
+              "oracle_type": "NUMBER",
+              "pg_type": "numeric",
+              "nullable": false,
+              "default": null
+            },
+            {
+              "name": "emp_id",
+              "oracle_type": "NUMBER(6)",
+              "pg_type": "numeric(6,0)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "pay_month",
+              "oracle_type": "DATE",
+              "pg_type": "timestamp(0) without time zone",
+              "nullable": false,
+              "default": null
+            },
+            {
+              "name": "gross_pay",
+              "oracle_type": "NUMBER(12, 2)",
+              "pg_type": "numeric(12,2)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "days_worked",
+              "oracle_type": "NUMBER(3)",
+              "pg_type": "numeric(3,0)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "created_at",
+              "oracle_type": "DATE",
+              "pg_type": "timestamp(0) without time zone",
+              "nullable": true,
+              "default": null
+            }
+          ],
+          "primary_key": [
+            "run_id"
+          ],
+          "unique": [],
+          "foreign_keys": [
+            {
+              "name": "payroll_runs_emp_id_fkey",
+              "columns": [
+                "emp_id"
+              ],
+              "ref_table": "table:legacy.employees",
+              "ref_columns": [
+                "emp_id"
+              ],
+              "on_delete": "no_action"
+            }
+          ]
+        },
+        "rows_copied": null,
+        "parity": null
+      },
+      {
+        "object_id": "table:legacy.salary_audit",
+        "status": "present",
+        "reason": "present in public.salary_audit as the Oracle DDL defines it (the 6 columns with their types, NOT NULL and defaults, the primary, unique and foreign keys) with the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+        "definition": {
+          "object_id": "table:legacy.salary_audit",
+          "target_schema": "public",
+          "target_name": "salary_audit",
+          "columns": [
+            {
+              "name": "audit_id",
+              "oracle_type": "NUMBER",
+              "pg_type": "numeric",
+              "nullable": false,
+              "default": null
+            },
+            {
+              "name": "emp_id",
+              "oracle_type": "NUMBER(6)",
+              "pg_type": "numeric(6,0)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "old_salary",
+              "oracle_type": "NUMBER(10, 2)",
+              "pg_type": "numeric(10,2)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "new_salary",
+              "oracle_type": "NUMBER(10, 2)",
+              "pg_type": "numeric(10,2)",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "changed_on",
+              "oracle_type": "DATE",
+              "pg_type": "timestamp(0) without time zone",
+              "nullable": true,
+              "default": null
+            },
+            {
+              "name": "change_type",
+              "oracle_type": "VARCHAR2(10)",
+              "pg_type": "character varying(10)",
+              "nullable": true,
+              "default": null
+            }
+          ],
+          "primary_key": [
+            "audit_id"
+          ],
+          "unique": [],
+          "foreign_keys": []
+        },
+        "rows_copied": null,
+        "parity": null
+      },
+      {
+        "object_id": "sequence:legacy.payroll_run_seq",
+        "status": "present",
+        "reason": "present in public.payroll_run_seq with the options of the Oracle DDL and the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+        "definition": {
+          "object_id": "sequence:legacy.payroll_run_seq",
+          "target_schema": "public",
+          "target_name": "payroll_run_seq",
+          "start_with": 1000,
+          "increment_by": 1,
+          "min_value": 1,
+          "max_value": 9223372036854775807,
+          "cycle": false
+        },
+        "rows_copied": null,
+        "parity": null
+      },
+      {
+        "object_id": "sequence:legacy.salary_audit_seq",
+        "status": "present",
+        "reason": "present in public.salary_audit_seq with the options of the Oracle DDL and the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+        "definition": {
+          "object_id": "sequence:legacy.salary_audit_seq",
+          "target_schema": "public",
+          "target_name": "salary_audit_seq",
+          "start_with": 1,
+          "increment_by": 1,
+          "min_value": 1,
+          "max_value": 9223372036854775807,
+          "cycle": false
+        },
+        "rows_copied": null,
+        "parity": null
+      }
+    ],
+    "problems": []
+  },
+  "objects": [
+    {
+      "object_id": "function:legacy.get_emp_grade",
+      "type": "function",
+      "source_file": "04_functions.sql",
+      "route": "rules",
+      "status": "passed",
+      "reason": "All tests pass on attempt 1.",
+      "category": null,
+      "blocked_by": [],
+      "repair": {
+        "object_id": "function:legacy.get_emp_grade",
+        "outcome": "passed",
+        "reason": "All tests pass on attempt 1.",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": true,
+            "compile_error": null,
+            "failure_code": null,
+            "category": null,
+            "model": null,
+            "needs_review": false,
+            "status": "passed",
+            "passed": 5,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "function:legacy.get_emp_grade",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "CREATE OR REPLACE FUNCTION get_emp_grade(p_emp_id numeric) RETURNS varchar\nLANGUAGE plpgsql AS $fn$\n#variable_conflict use_column\nDECLARE\n  v_salary employees.base_salary%TYPE;\n  v_rating varchar(10);\nBEGIN\n  SELECT base_salary, COALESCE(perf_rating, 'U') INTO STRICT v_salary, v_rating FROM employees WHERE emp_id = p_emp_id;\n  RETURN NULLIF(CONCAT(CASE v_rating WHEN 'A' THEN 'G1' WHEN 'B' THEN 'G2' WHEN 'C' THEN 'G3' WHEN 'U' THEN 'UNRATED' ELSE 'G4' END, '-', CASE WHEN v_salary >= 100000 THEN 'SENIOR' ELSE 'STANDARD' END), '');\nEXCEPTION\n  WHEN no_data_found THEN\n    RETURN NULL;\nEND;\n$fn$;\n",
+          "compiled_ok": true,
+          "compile_error": null,
+          "warnings": [],
+          "needs_review": false,
+          "model": null,
+          "failure_code": null,
+          "produced_at": "2026-11-17T09:03:26.924794Z"
+        },
+        "final_validation": {
+          "object_id": "function:legacy.get_emp_grade",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "gg-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-01",
+                "return_value": "G1-SENIOR",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-01",
+                "return_value": "G1-SENIOR",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 5.34
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "gg-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-02",
+                "return_value": "UNRATED-STANDARD",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-02",
+                "return_value": "UNRATED-STANDARD",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.77
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "gg-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-03",
+                "return_value": "G3-SENIOR",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-03",
+                "return_value": "G3-SENIOR",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 4.59
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "gg-04",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-04",
+                "return_value": "G2-STANDARD",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-04",
+                "return_value": "G2-STANDARD",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.8
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "gg-05",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-05",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-05",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 5.11
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 5,
+          "failed": 0,
+          "status": "passed"
+        },
+        "run_id": "c4b3f6566f124d988700d66c1b470012",
+        "category": null,
+        "last_validation": {
+          "object_id": "function:legacy.get_emp_grade",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "gg-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-01",
+                "return_value": "G1-SENIOR",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-01",
+                "return_value": "G1-SENIOR",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 5.34
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "gg-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-02",
+                "return_value": "UNRATED-STANDARD",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-02",
+                "return_value": "UNRATED-STANDARD",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.77
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "gg-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-03",
+                "return_value": "G3-SENIOR",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-03",
+                "return_value": "G3-SENIOR",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 4.59
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "gg-04",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-04",
+                "return_value": "G2-STANDARD",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-04",
+                "return_value": "G2-STANDARD",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.8
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "gg-05",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "gg-05",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "gg-05",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 5.11
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 5,
+          "failed": 0,
+          "status": "passed"
+        },
+        "last_deployed_version": 1
+      },
+      "gemini_calls": []
+    },
+    {
+      "object_id": "function:legacy.payroll_pkg.net_pay",
+      "type": "function",
+      "source_file": "03_payroll_pkg.sql",
+      "route": "rules",
+      "status": "passed",
+      "reason": "All tests pass on attempt 1.",
+      "category": null,
+      "blocked_by": [],
+      "repair": {
+        "object_id": "function:legacy.payroll_pkg.net_pay",
+        "outcome": "passed",
+        "reason": "All tests pass on attempt 1.",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": true,
+            "compile_error": null,
+            "failure_code": null,
+            "category": null,
+            "model": null,
+            "needs_review": false,
+            "status": "passed",
+            "passed": 3,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "function:legacy.payroll_pkg.net_pay",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "CREATE SCHEMA IF NOT EXISTS payroll_pkg;\nCREATE OR REPLACE FUNCTION payroll_pkg.net_pay(p_gross numeric) RETURNS numeric\nLANGUAGE plpgsql AS $fn$\n#variable_conflict use_column\nBEGIN\n  RETURN ROUND(COALESCE(p_gross, 0) * (1 - 0.10), 2);\nEND;\n$fn$;\n",
+          "compiled_ok": true,
+          "compile_error": null,
+          "warnings": [],
+          "needs_review": false,
+          "model": null,
+          "failure_code": null,
+          "produced_at": "2026-11-17T09:03:26.895431Z"
+        },
+        "final_validation": {
+          "object_id": "function:legacy.payroll_pkg.net_pay",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "pk-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-01",
+                "return_value": "9000.00",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-01",
+                "return_value": "9000.00",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 8.73
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "pk-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-02",
+                "return_value": "0",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-02",
+                "return_value": "0.00",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.39
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "pk-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-03",
+                "return_value": "8625.04",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-03",
+                "return_value": "8625.04",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.42
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 3,
+          "failed": 0,
+          "status": "passed"
+        },
+        "run_id": "d4c8f0644f7a455d866c490a834869d3",
+        "category": null,
+        "last_validation": {
+          "object_id": "function:legacy.payroll_pkg.net_pay",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "pk-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-01",
+                "return_value": "9000.00",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-01",
+                "return_value": "9000.00",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 8.73
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "pk-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-02",
+                "return_value": "0",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-02",
+                "return_value": "0.00",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.39
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "pk-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-03",
+                "return_value": "8625.04",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-03",
+                "return_value": "8625.04",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.42
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 3,
+          "failed": 0,
+          "status": "passed"
+        },
+        "last_deployed_version": 1
+      },
+      "gemini_calls": []
+    },
+    {
+      "object_id": "function:legacy.top_earners",
+      "type": "function",
+      "source_file": "04_functions.sql",
+      "route": "rules",
+      "status": "passed",
+      "reason": "All tests pass on attempt 1.",
+      "category": null,
+      "blocked_by": [],
+      "repair": {
+        "object_id": "function:legacy.top_earners",
+        "outcome": "passed",
+        "reason": "All tests pass on attempt 1.",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": true,
+            "compile_error": null,
+            "failure_code": null,
+            "category": null,
+            "model": null,
+            "needs_review": false,
+            "status": "passed",
+            "passed": 5,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "function:legacy.top_earners",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "CREATE OR REPLACE FUNCTION top_earners(p_dept_id numeric, p_n numeric) RETURNS varchar\nLANGUAGE plpgsql AS $fn$\n#variable_conflict use_column\nDECLARE\n  v_list varchar(4000);\n  r record;\nBEGIN\n  FOR r IN SELECT full_name FROM (SELECT full_name FROM employees WHERE dept_id = p_dept_id AND status = 'ACTIVE' ORDER BY base_salary DESC, emp_id LIMIT CAST(GREATEST(COALESCE(FLOOR(p_n), 0), 0) AS BIGINT)) LOOP\n    v_list := NULLIF(CONCAT(v_list, CASE WHEN NOT v_list IS NULL THEN ', ' END, r.full_name), '');\n  END LOOP;\n  RETURN v_list;\nEND;\n$fn$;\n",
+          "compiled_ok": true,
+          "compile_error": null,
+          "warnings": [],
+          "needs_review": false,
+          "model": null,
+          "failure_code": null,
+          "produced_at": "2026-11-17T09:03:26.962833Z"
+        },
+        "final_validation": {
+          "object_id": "function:legacy.top_earners",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "te-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-01",
+                "return_value": "Rohan Mehta, Karan Singh",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-01",
+                "return_value": "Rohan Mehta, Karan Singh",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 5.69
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "te-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-02",
+                "return_value": "Ira Kapoor",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-02",
+                "return_value": "Ira Kapoor",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.63
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "te-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-03",
+                "return_value": "Ira Kapoor, Priya Nair, Sana Khan, Vikram Rao",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-03",
+                "return_value": "Ira Kapoor, Priya Nair, Sana Khan, Vikram Rao",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.42
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "te-04",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-04",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-04",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.18
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "te-05",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-05",
+                "return_value": "Asha Verma",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-05",
+                "return_value": "Asha Verma",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.02
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 5,
+          "failed": 0,
+          "status": "passed"
+        },
+        "run_id": "fa5f479996214ee1a5cc609169267050",
+        "category": null,
+        "last_validation": {
+          "object_id": "function:legacy.top_earners",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "te-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-01",
+                "return_value": "Rohan Mehta, Karan Singh",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-01",
+                "return_value": "Rohan Mehta, Karan Singh",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 5.69
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "te-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-02",
+                "return_value": "Ira Kapoor",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-02",
+                "return_value": "Ira Kapoor",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.63
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "te-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-03",
+                "return_value": "Ira Kapoor, Priya Nair, Sana Khan, Vikram Rao",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-03",
+                "return_value": "Ira Kapoor, Priya Nair, Sana Khan, Vikram Rao",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.42
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "te-04",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-04",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-04",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.18
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "te-05",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "te-05",
+                "return_value": "Asha Verma",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "te-05",
+                "return_value": "Asha Verma",
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.02
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 5,
+          "failed": 0,
+          "status": "passed"
+        },
+        "last_deployed_version": 1
+      },
+      "gemini_calls": []
+    },
+    {
+      "object_id": "package:legacy.payroll_pkg",
+      "type": "package",
+      "source_file": "03_payroll_pkg.sql",
+      "route": "none",
+      "status": "not_converted",
+      "reason": "Not deployed on its own: its members are converted, deployed and tested one by one (D1).",
+      "category": null,
+      "blocked_by": [],
+      "repair": null,
+      "gemini_calls": []
+    },
+    {
+      "object_id": "procedure:legacy.apply_raise",
+      "type": "procedure",
+      "source_file": "05_procedures.sql",
+      "route": "rules",
+      "status": "passed",
+      "reason": "All tests pass on attempt 1.",
+      "category": null,
+      "blocked_by": [],
+      "repair": {
+        "object_id": "procedure:legacy.apply_raise",
+        "outcome": "passed",
+        "reason": "All tests pass on attempt 1.",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": true,
+            "compile_error": null,
+            "failure_code": null,
+            "category": null,
+            "model": null,
+            "needs_review": false,
+            "status": "passed",
+            "passed": 3,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "procedure:legacy.apply_raise",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "CREATE OR REPLACE PROCEDURE apply_raise(p_emp_id numeric, p_pct numeric, p_new_salary OUT numeric)\nLANGUAGE plpgsql AS $fn$\n#variable_conflict use_column\nDECLARE\n  v_old employees.base_salary%TYPE;\nBEGIN\n  SELECT base_salary INTO STRICT v_old FROM employees WHERE emp_id = p_emp_id FOR UPDATE;\n  p_new_salary := ROUND(v_old * (1 + CAST(p_pct AS DECIMAL) / 100), 2);\n  UPDATE employees SET base_salary = p_new_salary WHERE emp_id = p_emp_id;\nEXCEPTION\n  WHEN no_data_found THEN\n    p_new_salary := -1;\nEND;\n$fn$;\n",
+          "compiled_ok": true,
+          "compile_error": null,
+          "warnings": [],
+          "needs_review": false,
+          "model": null,
+          "failure_code": null,
+          "produced_at": "2026-11-17T09:03:27.025697Z"
+        },
+        "final_validation": {
+          "object_id": "procedure:legacy.apply_raise",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "ar-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "ar-01",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "90950.54"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "ar-01",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "90950.54"
+                },
+                "rows": null,
+                "table_diffs": [
+                  {
+                    "table": "employees",
+                    "inserted": [],
+                    "deleted": [],
+                    "updated": [
+                      {
+                        "key": {
+                          "emp_id": "104"
+                        },
+                        "before": {
+                          "emp_id": "104",
+                          "full_name": "Karan Singh",
+                          "email": "karan@pv.test",
+                          "dept_id": "20",
+                          "manager_id": "102",
+                          "hire_date": "2021-07-19T00:00:00",
+                          "base_salary": "85000.50",
+                          "perf_rating": "B",
+                          "status": "ACTIVE"
+                        },
+                        "after": {
+                          "emp_id": "104",
+                          "full_name": "Karan Singh",
+                          "email": "karan@pv.test",
+                          "dept_id": "20",
+                          "manager_id": "102",
+                          "hire_date": "2021-07-19T00:00:00",
+                          "base_salary": "90950.54",
+                          "perf_rating": "B",
+                          "status": "ACTIVE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "table": "salary_audit",
+                    "inserted": [
+                      {
+                        "audit_id": "3",
+                        "emp_id": "104",
+                        "old_salary": "85000.50",
+                        "new_salary": "90950.54",
+                        "changed_on": "2026-11-17T00:00:00",
+                        "change_type": "RAISE"
+                      }
+                    ],
+                    "deleted": [],
+                    "updated": []
+                  }
+                ],
+                "error": null,
+                "duration_ms": 5.9
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "ar-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "ar-02",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "64000"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "ar-02",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "64000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 6.0
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "ar-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "ar-03",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "-1"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "ar-03",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "-1"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.88
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 3,
+          "failed": 0,
+          "status": "passed"
+        },
+        "run_id": "e52c4e617f514a8db37d6b569ea39bc1",
+        "category": null,
+        "last_validation": {
+          "object_id": "procedure:legacy.apply_raise",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "ar-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "ar-01",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "90950.54"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "ar-01",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "90950.54"
+                },
+                "rows": null,
+                "table_diffs": [
+                  {
+                    "table": "employees",
+                    "inserted": [],
+                    "deleted": [],
+                    "updated": [
+                      {
+                        "key": {
+                          "emp_id": "104"
+                        },
+                        "before": {
+                          "emp_id": "104",
+                          "full_name": "Karan Singh",
+                          "email": "karan@pv.test",
+                          "dept_id": "20",
+                          "manager_id": "102",
+                          "hire_date": "2021-07-19T00:00:00",
+                          "base_salary": "85000.50",
+                          "perf_rating": "B",
+                          "status": "ACTIVE"
+                        },
+                        "after": {
+                          "emp_id": "104",
+                          "full_name": "Karan Singh",
+                          "email": "karan@pv.test",
+                          "dept_id": "20",
+                          "manager_id": "102",
+                          "hire_date": "2021-07-19T00:00:00",
+                          "base_salary": "90950.54",
+                          "perf_rating": "B",
+                          "status": "ACTIVE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "table": "salary_audit",
+                    "inserted": [
+                      {
+                        "audit_id": "3",
+                        "emp_id": "104",
+                        "old_salary": "85000.50",
+                        "new_salary": "90950.54",
+                        "changed_on": "2026-11-17T00:00:00",
+                        "change_type": "RAISE"
+                      }
+                    ],
+                    "deleted": [],
+                    "updated": []
+                  }
+                ],
+                "error": null,
+                "duration_ms": 5.9
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "ar-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "ar-02",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "64000"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "ar-02",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "64000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 6.0
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "ar-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "ar-03",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "-1"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "ar-03",
+                "return_value": null,
+                "out_params": {
+                  "p_new_salary": "-1"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.88
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 3,
+          "failed": 0,
+          "status": "passed"
+        },
+        "last_deployed_version": 1
+      },
+      "gemini_calls": []
+    },
+    {
+      "object_id": "procedure:legacy.calc_bonus",
+      "type": "procedure",
+      "source_file": "05_procedures.sql",
+      "route": "rules",
+      "status": "passed",
+      "reason": "All tests pass on attempt 1.",
+      "category": null,
+      "blocked_by": [],
+      "repair": {
+        "object_id": "procedure:legacy.calc_bonus",
+        "outcome": "passed",
+        "reason": "All tests pass on attempt 1.",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": true,
+            "compile_error": null,
+            "failure_code": null,
+            "category": null,
+            "model": null,
+            "needs_review": false,
+            "status": "passed",
+            "passed": 6,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "procedure:legacy.calc_bonus",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "CREATE OR REPLACE PROCEDURE calc_bonus(p_emp_id numeric, p_override varchar, p_bonus OUT numeric)\nLANGUAGE plpgsql AS $fn$\n#variable_conflict use_column\nBEGIN\n  p_override := NULLIF(p_override, '');\n  DECLARE\n    v_salary employees.base_salary%TYPE;\n    v_rating employees.perf_rating%TYPE;\n  BEGIN\n    SELECT base_salary, perf_rating INTO STRICT v_salary, v_rating FROM employees WHERE emp_id = p_emp_id;\n    IF NOT p_override IS NULL THEN\n      v_rating := p_override;\n    END IF;\n    IF v_rating = 'A' THEN\n      p_bonus := ROUND(v_salary * 0.20, 2);\n    ELSIF v_rating = 'B' THEN\n      p_bonus := ROUND(v_salary * 0.10, 2);\n    ELSIF v_rating IS NULL THEN\n      p_bonus := 0;\n    ELSE\n      p_bonus := ROUND(v_salary * 0.05, 2);\n    END IF;\n  END;\nEND;\n$fn$;\n",
+          "compiled_ok": true,
+          "compile_error": null,
+          "warnings": [],
+          "needs_review": false,
+          "model": null,
+          "failure_code": null,
+          "produced_at": "2026-11-17T09:03:27.055594Z"
+        },
+        "final_validation": {
+          "object_id": "procedure:legacy.calc_bonus",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "cb-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-01",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "24000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-01",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "24000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 4.99
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-02",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "24000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-02",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "24000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.51
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-03",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "19600.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-03",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "19600.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 4.0
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-04",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-04",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "0"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-04",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "0"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.92
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-05",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-05",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "4250.03"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-05",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "4250.03"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.59
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-06",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-06",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": {
+                  "code": "ORA-01403",
+                  "message": "recorded",
+                  "context": null
+                },
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-06",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": {
+                  "code": "P0002",
+                  "message": "query returned no rows",
+                  "context": "PL/pgSQL function calc_bonus(numeric,character varying) line 9 at SQL statement"
+                },
+                "duration_ms": 1.77
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 6,
+          "failed": 0,
+          "status": "passed"
+        },
+        "run_id": "58a79493b3c54cd29624b4e79dab1071",
+        "category": null,
+        "last_validation": {
+          "object_id": "procedure:legacy.calc_bonus",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "cb-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-01",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "24000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-01",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "24000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 4.99
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-02",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "24000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-02",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "24000.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.51
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-03",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "19600.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-03",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "19600.00"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 4.0
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-04",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-04",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "0"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-04",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "0"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.92
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-05",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-05",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "4250.03"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-05",
+                "return_value": null,
+                "out_params": {
+                  "p_bonus": "4250.03"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.59
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "cb-06",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "cb-06",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": {
+                  "code": "ORA-01403",
+                  "message": "recorded",
+                  "context": null
+                },
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "cb-06",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": {
+                  "code": "P0002",
+                  "message": "query returned no rows",
+                  "context": "PL/pgSQL function calc_bonus(numeric,character varying) line 9 at SQL statement"
+                },
+                "duration_ms": 1.77
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 6,
+          "failed": 0,
+          "status": "passed"
+        },
+        "last_deployed_version": 1
+      },
+      "gemini_calls": []
+    },
+    {
+      "object_id": "procedure:legacy.monthly_payroll",
+      "type": "procedure",
+      "source_file": "05_procedures.sql",
+      "route": "rules",
+      "status": "passed_needs_review",
+      "reason": "All tests pass; the converter flagged this object for human sign-off.",
+      "category": null,
+      "blocked_by": [],
+      "repair": {
+        "object_id": "procedure:legacy.monthly_payroll",
+        "outcome": "passed_needs_review",
+        "reason": "All tests pass; the converter flagged this object for human sign-off.",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": true,
+            "compile_error": null,
+            "failure_code": null,
+            "category": null,
+            "model": null,
+            "needs_review": true,
+            "status": "passed",
+            "passed": 1,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "procedure:legacy.monthly_payroll",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "CREATE OR REPLACE PROCEDURE monthly_payroll(p_run_date timestamp(0), p_rows_out OUT numeric)\nLANGUAGE plpgsql AS $fn$\n#variable_conflict use_column\nDECLARE\n  v_month_start timestamp(0) := DATE_TRUNC('MONTH', p_run_date);\n  v_month_end timestamp(0) := DATE_TRUNC('MONTH', DATE_TRUNC('DAY', p_run_date)) + INTERVAL '1 month - 1 day' + (DATE_TRUNC('DAY', p_run_date) - DATE_TRUNC('DAY', DATE_TRUNC('DAY', p_run_date)));\n  v_days_in_m numeric := EXTRACT(EPOCH FROM (v_month_end - v_month_start)) / 86400 + 1;\n  v_days numeric;\n  v_allow numeric;\n  v_gross numeric(12, 2);\n  e record;\nBEGIN\n  p_rows_out := 0;\n  FOR e IN SELECT emp_id, hire_date, base_salary FROM employees WHERE status = 'ACTIVE' AND hire_date <= v_month_end ORDER BY emp_id LOOP\n    v_days := EXTRACT(EPOCH FROM (v_month_end - GREATEST(DATE_TRUNC('DAY', e.hire_date), v_month_start))) / 86400 + 1;\n    v_allow := CASE WHEN e.hire_date > CASE WHEN DATE_TRUNC('DAY', v_month_end) = DATE_TRUNC('MONTH', v_month_end) + INTERVAL '1 month - 1 day' THEN DATE_TRUNC('MONTH', v_month_end) + (CAST(TRUNC(-6) AS INT) + 1) * INTERVAL '1 MONTH' - INTERVAL '1 DAY' + (v_month_end - DATE_TRUNC('DAY', v_month_end)) ELSE v_month_end + CAST(TRUNC(-6) AS INT) * INTERVAL '1 MONTH' END THEN 0 ELSE 2500 END;\n    v_gross := ROUND(CAST(CAST(e.base_salary AS DECIMAL) / 12 * v_days AS DECIMAL) / v_days_in_m, 2) + v_allow;\n    INSERT INTO payroll_runs (run_id, emp_id, pay_month, gross_pay, days_worked, created_at) VALUES (NEXTVAL('payroll_run_seq'), e.emp_id, v_month_start, v_gross, v_days, p_run_date);\n    p_rows_out := p_rows_out + 1;\n  END LOOP;\nEND;\n$fn$;\n",
+          "compiled_ok": true,
+          "compile_error": null,
+          "warnings": [
+            "PostgreSQL needs every input parameter after a default to have one too, and allows no OUT parameter after a default; dropped the default of p_run_date. Callers must pass it.",
+            "Needs review: parameter default dropped (p_run_date)"
+          ],
+          "needs_review": true,
+          "model": null,
+          "failure_code": null,
+          "produced_at": "2026-11-17T09:03:27.105586Z"
+        },
+        "final_validation": {
+          "object_id": "procedure:legacy.monthly_payroll",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "mp-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "mp-01",
+                "return_value": null,
+                "out_params": {
+                  "p_rows_out": "10"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "mp-01",
+                "return_value": null,
+                "out_params": {
+                  "p_rows_out": "10"
+                },
+                "rows": null,
+                "table_diffs": [
+                  {
+                    "table": "payroll_runs",
+                    "inserted": [
+                      {
+                        "run_id": "1007",
+                        "emp_id": "108",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "7166.67",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1004",
+                        "emp_id": "105",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "9583.38",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1003",
+                        "emp_id": "104",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "9583.38",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1002",
+                        "emp_id": "103",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "10666.67",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1001",
+                        "emp_id": "102",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "12500.00",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1008",
+                        "emp_id": "109",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "1944.44",
+                        "days_worked": "14",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1009",
+                        "emp_id": "111",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "10916.73",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1005",
+                        "emp_id": "106",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "7833.33",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1000",
+                        "emp_id": "101",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "22500.00",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1006",
+                        "emp_id": "107",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "8500.00",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      }
+                    ],
+                    "deleted": [],
+                    "updated": []
+                  }
+                ],
+                "error": null,
+                "duration_ms": 5.89
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 1,
+          "failed": 0,
+          "status": "passed"
+        },
+        "run_id": "477bdca3d97f4c0c8a31ff9c9df4ce22",
+        "category": null,
+        "last_validation": {
+          "object_id": "procedure:legacy.monthly_payroll",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "mp-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "mp-01",
+                "return_value": null,
+                "out_params": {
+                  "p_rows_out": "10"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "mp-01",
+                "return_value": null,
+                "out_params": {
+                  "p_rows_out": "10"
+                },
+                "rows": null,
+                "table_diffs": [
+                  {
+                    "table": "payroll_runs",
+                    "inserted": [
+                      {
+                        "run_id": "1007",
+                        "emp_id": "108",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "7166.67",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1004",
+                        "emp_id": "105",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "9583.38",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1003",
+                        "emp_id": "104",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "9583.38",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1002",
+                        "emp_id": "103",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "10666.67",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1001",
+                        "emp_id": "102",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "12500.00",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1008",
+                        "emp_id": "109",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "1944.44",
+                        "days_worked": "14",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1009",
+                        "emp_id": "111",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "10916.73",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1005",
+                        "emp_id": "106",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "7833.33",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1000",
+                        "emp_id": "101",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "22500.00",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      },
+                      {
+                        "run_id": "1006",
+                        "emp_id": "107",
+                        "pay_month": "2026-09-01T00:00:00",
+                        "gross_pay": "8500.00",
+                        "days_worked": "30",
+                        "created_at": "2026-09-15T00:00:00"
+                      }
+                    ],
+                    "deleted": [],
+                    "updated": []
+                  }
+                ],
+                "error": null,
+                "duration_ms": 5.89
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 1,
+          "failed": 0,
+          "status": "passed"
+        },
+        "last_deployed_version": 1
+      },
+      "gemini_calls": []
+    },
+    {
+      "object_id": "procedure:legacy.payroll_pkg.close_month",
+      "type": "procedure",
+      "source_file": "03_payroll_pkg.sql",
+      "route": "rules",
+      "status": "passed",
+      "reason": "All tests pass on attempt 1.",
+      "category": null,
+      "blocked_by": [],
+      "repair": {
+        "object_id": "procedure:legacy.payroll_pkg.close_month",
+        "outcome": "passed",
+        "reason": "All tests pass on attempt 1.",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": true,
+            "compile_error": null,
+            "failure_code": null,
+            "category": null,
+            "model": null,
+            "needs_review": false,
+            "status": "passed",
+            "passed": 2,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "procedure:legacy.payroll_pkg.close_month",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "CREATE SCHEMA IF NOT EXISTS payroll_pkg;\nCREATE OR REPLACE PROCEDURE payroll_pkg.close_month(p_pay_month timestamp(0), p_total OUT numeric)\nLANGUAGE plpgsql AS $fn$\n#variable_conflict use_column\nBEGIN\n  SELECT COALESCE(SUM(payroll_pkg.net_pay(gross_pay)), 0) INTO STRICT p_total FROM payroll_runs WHERE pay_month = DATE_TRUNC('MONTH', p_pay_month);\nEND;\n$fn$;\n",
+          "compiled_ok": true,
+          "compile_error": null,
+          "warnings": [],
+          "needs_review": false,
+          "model": null,
+          "failure_code": null,
+          "produced_at": "2026-11-17T09:03:27.122655Z"
+        },
+        "final_validation": {
+          "object_id": "procedure:legacy.payroll_pkg.close_month",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "pk-04",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-04",
+                "return_value": null,
+                "out_params": {
+                  "p_total": "91075.14"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-04",
+                "return_value": null,
+                "out_params": {
+                  "p_total": "91075.14"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 4.93
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "pk-05",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-05",
+                "return_value": null,
+                "out_params": {
+                  "p_total": "0"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-05",
+                "return_value": null,
+                "out_params": {
+                  "p_total": "0"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.05
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 2,
+          "failed": 0,
+          "status": "passed"
+        },
+        "run_id": "2dcae37cb43f4ab99eebf663639f0bb0",
+        "category": null,
+        "last_validation": {
+          "object_id": "procedure:legacy.payroll_pkg.close_month",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "pk-04",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-04",
+                "return_value": null,
+                "out_params": {
+                  "p_total": "91075.14"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-04",
+                "return_value": null,
+                "out_params": {
+                  "p_total": "91075.14"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 4.93
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "pk-05",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "pk-05",
+                "return_value": null,
+                "out_params": {
+                  "p_total": "0"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "pk-05",
+                "return_value": null,
+                "out_params": {
+                  "p_total": "0"
+                },
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.05
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 2,
+          "failed": 0,
+          "status": "passed"
+        },
+        "last_deployed_version": 1
+      },
+      "gemini_calls": []
+    },
+    {
+      "object_id": "sequence:legacy.payroll_run_seq",
+      "type": "sequence",
+      "source_file": "01_schema.sql",
+      "route": "schema",
+      "status": "passed",
+      "reason": "present in public.payroll_run_seq with the options of the Oracle DDL and the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+      "category": null,
+      "blocked_by": [],
+      "repair": null,
+      "gemini_calls": []
+    },
+    {
+      "object_id": "sequence:legacy.salary_audit_seq",
+      "type": "sequence",
+      "source_file": "01_schema.sql",
+      "route": "schema",
+      "status": "passed",
+      "reason": "present in public.salary_audit_seq with the options of the Oracle DDL and the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+      "category": null,
+      "blocked_by": [],
+      "repair": null,
+      "gemini_calls": []
+    },
+    {
+      "object_id": "table:legacy.departments",
+      "type": "table",
+      "source_file": "01_schema.sql",
+      "route": "schema",
+      "status": "passed",
+      "reason": "present in public.departments as the Oracle DDL defines it (the 2 columns with their types, NOT NULL and defaults, the primary, unique and foreign keys) with the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+      "category": null,
+      "blocked_by": [],
+      "repair": null,
+      "gemini_calls": []
+    },
+    {
+      "object_id": "table:legacy.employees",
+      "type": "table",
+      "source_file": "01_schema.sql",
+      "route": "schema",
+      "status": "passed",
+      "reason": "present in public.employees as the Oracle DDL defines it (the 9 columns with their types, NOT NULL and defaults, the primary, unique and foreign keys) with the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+      "category": null,
+      "blocked_by": [],
+      "repair": null,
+      "gemini_calls": []
+    },
+    {
+      "object_id": "table:legacy.payroll_runs",
+      "type": "table",
+      "source_file": "01_schema.sql",
+      "route": "schema",
+      "status": "passed",
+      "reason": "present in public.payroll_runs as the Oracle DDL defines it (the 6 columns with their types, NOT NULL and defaults, the primary, unique and foreign keys) with the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+      "category": null,
+      "blocked_by": [],
+      "repair": null,
+      "gemini_calls": []
+    },
+    {
+      "object_id": "table:legacy.salary_audit",
+      "type": "table",
+      "source_file": "01_schema.sql",
+      "route": "schema",
+      "status": "passed",
+      "reason": "present in public.salary_audit as the Oracle DDL defines it (the 6 columns with their types, NOT NULL and defaults, the primary, unique and foreign keys) with the rights setup_target_roles.py grants; prepared before the run, not migrated by it",
+      "category": null,
+      "blocked_by": [],
+      "repair": null,
+      "gemini_calls": []
+    },
+    {
+      "object_id": "trigger:legacy.emp_salary_audit_trg",
+      "type": "trigger",
+      "source_file": "06_triggers.sql",
+      "route": "rules",
+      "status": "passed",
+      "reason": "All tests pass on attempt 1.",
+      "category": null,
+      "blocked_by": [],
+      "repair": {
+        "object_id": "trigger:legacy.emp_salary_audit_trg",
+        "outcome": "passed",
+        "reason": "All tests pass on attempt 1.",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": true,
+            "compile_error": null,
+            "failure_code": null,
+            "category": null,
+            "model": null,
+            "needs_review": false,
+            "status": "passed",
+            "passed": 3,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "trigger:legacy.emp_salary_audit_trg",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "CREATE OR REPLACE FUNCTION emp_salary_audit_trg_fn() RETURNS trigger\nLANGUAGE plpgsql AS $fn$\n#variable_conflict use_column\nBEGIN\n  INSERT INTO salary_audit (audit_id, emp_id, old_salary, new_salary, changed_on, change_type) VALUES (NEXTVAL('salary_audit_seq'), NEW.emp_id, OLD.base_salary, NEW.base_salary, DATE_TRUNC('DAY', CAST(DATE_TRUNC('SECOND', STATEMENT_TIMESTAMP()) AS TIMESTAMP(0))), CASE WHEN NEW.base_salary > OLD.base_salary THEN 'RAISE' ELSE 'CUT' END);\n  RETURN NULL;\nEND;\n$fn$;\n\nCREATE OR REPLACE TRIGGER emp_salary_audit_trg\nAFTER update of base_salary ON employees\nFOR EACH ROW\nWHEN (NEW.base_salary <> OLD.base_salary)\nEXECUTE FUNCTION emp_salary_audit_trg_fn();\n",
+          "compiled_ok": true,
+          "compile_error": null,
+          "warnings": [],
+          "needs_review": false,
+          "model": null,
+          "failure_code": null,
+          "produced_at": "2026-11-17T09:03:26.998204Z"
+        },
+        "final_validation": {
+          "object_id": "trigger:legacy.emp_salary_audit_trg",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "tr-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "tr-01",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "tr-01",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [
+                  {
+                    "table": "employees",
+                    "inserted": [],
+                    "deleted": [],
+                    "updated": [
+                      {
+                        "key": {
+                          "emp_id": "106"
+                        },
+                        "before": {
+                          "emp_id": "106",
+                          "full_name": "Vikram Rao",
+                          "email": "vikram@pv.test",
+                          "dept_id": "30",
+                          "manager_id": "103",
+                          "hire_date": "2023-01-31T00:00:00",
+                          "base_salary": "64000.00",
+                          "perf_rating": null,
+                          "status": "ACTIVE"
+                        },
+                        "after": {
+                          "emp_id": "106",
+                          "full_name": "Vikram Rao",
+                          "email": "vikram@pv.test",
+                          "dept_id": "30",
+                          "manager_id": "103",
+                          "hire_date": "2023-01-31T00:00:00",
+                          "base_salary": "70000.00",
+                          "perf_rating": null,
+                          "status": "ACTIVE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "table": "salary_audit",
+                    "inserted": [
+                      {
+                        "audit_id": "1",
+                        "emp_id": "106",
+                        "old_salary": "64000.00",
+                        "new_salary": "70000.00",
+                        "changed_on": "2026-11-17T00:00:00",
+                        "change_type": "RAISE"
+                      }
+                    ],
+                    "deleted": [],
+                    "updated": []
+                  }
+                ],
+                "error": null,
+                "duration_ms": 8.47
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "tr-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "tr-02",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "tr-02",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [
+                  {
+                    "table": "employees",
+                    "inserted": [],
+                    "deleted": [],
+                    "updated": [
+                      {
+                        "key": {
+                          "emp_id": "106"
+                        },
+                        "before": {
+                          "emp_id": "106",
+                          "full_name": "Vikram Rao",
+                          "email": "vikram@pv.test",
+                          "dept_id": "30",
+                          "manager_id": "103",
+                          "hire_date": "2023-01-31T00:00:00",
+                          "base_salary": "64000.00",
+                          "perf_rating": null,
+                          "status": "ACTIVE"
+                        },
+                        "after": {
+                          "emp_id": "106",
+                          "full_name": "Vikram Rao",
+                          "email": "vikram@pv.test",
+                          "dept_id": "30",
+                          "manager_id": "103",
+                          "hire_date": "2023-01-31T00:00:00",
+                          "base_salary": "60000.00",
+                          "perf_rating": null,
+                          "status": "ACTIVE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "table": "salary_audit",
+                    "inserted": [
+                      {
+                        "audit_id": "2",
+                        "emp_id": "106",
+                        "old_salary": "64000.00",
+                        "new_salary": "60000.00",
+                        "changed_on": "2026-11-17T00:00:00",
+                        "change_type": "CUT"
+                      }
+                    ],
+                    "deleted": [],
+                    "updated": []
+                  }
+                ],
+                "error": null,
+                "duration_ms": 3.87
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "tr-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "tr-03",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "tr-03",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.26
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 3,
+          "failed": 0,
+          "status": "passed"
+        },
+        "run_id": "2c7d3c36fe74463b82d93ddb08a71b5c",
+        "category": null,
+        "last_validation": {
+          "object_id": "trigger:legacy.emp_salary_audit_trg",
+          "conversion_version": 1,
+          "tests": [
+            {
+              "test_id": "tr-01",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "tr-01",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "tr-01",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [
+                  {
+                    "table": "employees",
+                    "inserted": [],
+                    "deleted": [],
+                    "updated": [
+                      {
+                        "key": {
+                          "emp_id": "106"
+                        },
+                        "before": {
+                          "emp_id": "106",
+                          "full_name": "Vikram Rao",
+                          "email": "vikram@pv.test",
+                          "dept_id": "30",
+                          "manager_id": "103",
+                          "hire_date": "2023-01-31T00:00:00",
+                          "base_salary": "64000.00",
+                          "perf_rating": null,
+                          "status": "ACTIVE"
+                        },
+                        "after": {
+                          "emp_id": "106",
+                          "full_name": "Vikram Rao",
+                          "email": "vikram@pv.test",
+                          "dept_id": "30",
+                          "manager_id": "103",
+                          "hire_date": "2023-01-31T00:00:00",
+                          "base_salary": "70000.00",
+                          "perf_rating": null,
+                          "status": "ACTIVE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "table": "salary_audit",
+                    "inserted": [
+                      {
+                        "audit_id": "1",
+                        "emp_id": "106",
+                        "old_salary": "64000.00",
+                        "new_salary": "70000.00",
+                        "changed_on": "2026-11-17T00:00:00",
+                        "change_type": "RAISE"
+                      }
+                    ],
+                    "deleted": [],
+                    "updated": []
+                  }
+                ],
+                "error": null,
+                "duration_ms": 8.47
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "tr-02",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "tr-02",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "tr-02",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [
+                  {
+                    "table": "employees",
+                    "inserted": [],
+                    "deleted": [],
+                    "updated": [
+                      {
+                        "key": {
+                          "emp_id": "106"
+                        },
+                        "before": {
+                          "emp_id": "106",
+                          "full_name": "Vikram Rao",
+                          "email": "vikram@pv.test",
+                          "dept_id": "30",
+                          "manager_id": "103",
+                          "hire_date": "2023-01-31T00:00:00",
+                          "base_salary": "64000.00",
+                          "perf_rating": null,
+                          "status": "ACTIVE"
+                        },
+                        "after": {
+                          "emp_id": "106",
+                          "full_name": "Vikram Rao",
+                          "email": "vikram@pv.test",
+                          "dept_id": "30",
+                          "manager_id": "103",
+                          "hire_date": "2023-01-31T00:00:00",
+                          "base_salary": "60000.00",
+                          "perf_rating": null,
+                          "status": "ACTIVE"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "table": "salary_audit",
+                    "inserted": [
+                      {
+                        "audit_id": "2",
+                        "emp_id": "106",
+                        "old_salary": "64000.00",
+                        "new_salary": "60000.00",
+                        "changed_on": "2026-11-17T00:00:00",
+                        "change_type": "CUT"
+                      }
+                    ],
+                    "deleted": [],
+                    "updated": []
+                  }
+                ],
+                "error": null,
+                "duration_ms": 3.87
+              },
+              "diffs": []
+            },
+            {
+              "test_id": "tr-03",
+              "status": "passed",
+              "source": {
+                "engine": "oracle",
+                "test_id": "tr-03",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 0.0
+              },
+              "target": {
+                "engine": "postgres",
+                "test_id": "tr-03",
+                "return_value": null,
+                "out_params": {},
+                "rows": null,
+                "table_diffs": [],
+                "error": null,
+                "duration_ms": 3.26
+              },
+              "diffs": []
+            }
+          ],
+          "passed": 3,
+          "failed": 0,
+          "status": "passed"
+        },
+        "last_deployed_version": 1
+      },
+      "gemini_calls": []
+    },
+    {
+      "object_id": "view:legacy.org_chart",
+      "type": "view",
+      "source_file": "07_views.sql",
+      "route": "gemini",
+      "status": "needs_human",
+      "reason": "Stopped at attempt 1 (unsupported): No deterministic rule for: hierarchical query (CONNECT BY); SYS_CONNECT_BY_PATH must raise like ORA-30004 when a value contains the separator: in the recursive CTE carry has_sep = strpos(value, separator) > 0 for each row, and return the path from the outer SELECT as pv_compat.connect_by_path_checked(path, bool_or(has_sep) OVER ()). The platform provides that function (it raises SQLSTATE PV001); do not create any function. Needs the Gemini fallback (Stage 2, step 6).",
+      "category": "unsupported",
+      "blocked_by": [],
+      "repair": {
+        "object_id": "view:legacy.org_chart",
+        "outcome": "needs_human",
+        "reason": "Stopped at attempt 1 (unsupported): No deterministic rule for: hierarchical query (CONNECT BY); SYS_CONNECT_BY_PATH must raise like ORA-30004 when a value contains the separator: in the recursive CTE carry has_sep = strpos(value, separator) > 0 for each row, and return the path from the outer SELECT as pv_compat.connect_by_path_checked(path, bool_or(has_sep) OVER ()). The platform provides that function (it raises SQLSTATE PV001); do not create any function. Needs the Gemini fallback (Stage 2, step 6).",
+        "attempts": [
+          {
+            "attempt": 1,
+            "version": 1,
+            "tool": "sqlglot",
+            "compiled_ok": false,
+            "compile_error": "No deterministic rule for: hierarchical query (CONNECT BY); SYS_CONNECT_BY_PATH must raise like ORA-30004 when a value contains the separator: in the recursive CTE carry has_sep = strpos(value, separator) > 0 for each row, and return the path from the outer SELECT as pv_compat.connect_by_path_checked(path, bool_or(has_sep) OVER ()). The platform provides that function (it raises SQLSTATE PV001); do not create any function. Needs the Gemini fallback (Stage 2, step 6).",
+            "failure_code": "needs_gemini",
+            "category": "unsupported",
+            "model": null,
+            "needs_review": false,
+            "status": null,
+            "passed": 0,
+            "failed": 0,
+            "errors": 0,
+            "failing_tests": [],
+            "feedback_summary": null
+          }
+        ],
+        "final_conversion": {
+          "object_id": "view:legacy.org_chart",
+          "version": 1,
+          "tool": "sqlglot",
+          "target_code": "",
+          "compiled_ok": false,
+          "compile_error": "No deterministic rule for: hierarchical query (CONNECT BY); SYS_CONNECT_BY_PATH must raise like ORA-30004 when a value contains the separator: in the recursive CTE carry has_sep = strpos(value, separator) > 0 for each row, and return the path from the outer SELECT as pv_compat.connect_by_path_checked(path, bool_or(has_sep) OVER ()). The platform provides that function (it raises SQLSTATE PV001); do not create any function. Needs the Gemini fallback (Stage 2, step 6).",
+          "warnings": [],
+          "needs_review": false,
+          "model": null,
+          "failure_code": "needs_gemini",
+          "produced_at": "2026-11-17T09:03:27.083963Z"
+        },
+        "final_validation": null,
+        "run_id": "aeeae62398704a728b589b88a54f122e",
+        "category": "unsupported",
+        "last_validation": null,
+        "last_deployed_version": null
+      },
+      "gemini_calls": []
+    }
+  ],
+  "problems": [],
+  "metrics": {
+    "objects": {
+      "passed": 13,
+      "passed_needs_review": 1,
+      "needs_human": 1,
+      "not_converted": 1,
+      "error": 0
+    },
+    "by_type": {
+      "table": {
+        "passed": 4,
+        "passed_needs_review": 0,
+        "needs_human": 0,
+        "not_converted": 0,
+        "error": 0
+      },
+      "view": {
+        "passed": 0,
+        "passed_needs_review": 0,
+        "needs_human": 1,
+        "not_converted": 0,
+        "error": 0
+      },
+      "sequence": {
+        "passed": 2,
+        "passed_needs_review": 0,
+        "needs_human": 0,
+        "not_converted": 0,
+        "error": 0
+      },
+      "function": {
+        "passed": 3,
+        "passed_needs_review": 0,
+        "needs_human": 0,
+        "not_converted": 0,
+        "error": 0
+      },
+      "procedure": {
+        "passed": 3,
+        "passed_needs_review": 1,
+        "needs_human": 0,
+        "not_converted": 0,
+        "error": 0
+      },
+      "trigger": {
+        "passed": 1,
+        "passed_needs_review": 0,
+        "needs_human": 0,
+        "not_converted": 0,
+        "error": 0
+      },
+      "package": {
+        "passed": 0,
+        "passed_needs_review": 0,
+        "needs_human": 0,
+        "not_converted": 1,
+        "error": 0
+      }
+    },
+    "needs_human": [
+      "view:legacy.org_chart"
+    ],
+    "deployed": 8,
+    "validated": 8,
+    "schema_parity": "not_checked",
+    "failed_deployments": 0,
+    "unexplained": [],
+    "gemini_requests": 0,
+    "gemini_cache_hits": 0,
+    "source_objects": 16,
+    "reported_objects": 16
+  }
+}

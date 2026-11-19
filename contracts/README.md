@@ -72,3 +72,43 @@ upload, the trigger gets `trigger=None`, the reference stays in `depends_on` as
   members, unresolved references, invalid ids, normalization, collisions, TriggerInfo).
 - `backend/tests/test_object_id_conformance.py`: the parser's output for
   `samples/oracle` meets this contract. Marked `xfail(strict=True)` until PR B.
+
+# Pipeline contracts (contract 0.7)
+
+Proposed by Tarun, for Aarsh's approval, as the Phase 0 contract PR (`contract/v0.7-pipeline`).
+The seam between Workstream A (platform) and Workstream B (engine): neither imports the
+other's modules, only these contracts.
+
+| Module | Holds |
+| --- | --- |
+| `pipeline.py` | `SourceFile`, `MigrationOptions`, `TargetEnvironment` (never stored), `ObjectOutcome`, `ObjectStatus`, `Route`, `GeminiCall`, `RunMetrics` (A12–A17), `MigrationRun` |
+| `schema_defs.py` | `TableDef`, `ColumnDef`, `ForeignKeyDef`, `SequenceDef`, `ParityCheck`, `SchemaObjectOutcome`, `SchemaMigrationResult` |
+| `models.py` | `RepairRun`, `AttemptRecord`, `RepairOutcome`, `FailureCategory` (moved from `orchestration/repair_loop.py`, which re-exports them) |
+| `interfaces.py` | `MigrationEngine` (B), `SchemaMigrator`, `SourceProvider`, `ProgressSink`, `ReportWriter` (A) |
+
+## Rules the models enforce
+
+1. **No silent skips (A17).** `MigrationRun.objects` has exactly one outcome per object in
+   `MigrationRun.discovered`; a run with a missing, extra or duplicated object does not load.
+2. **Every outcome has a status and a reason.** `passed` (deployed, every test of the final
+   version passed), `passed_needs_review` (tests passed, sign-off still needed, or no test ran),
+   `needs_human`, `not_converted` (deliberately not attempted), `error` (the engine failed
+   outside the repair loop; always unexplained, A16). The status of a routine or view is the
+   one its `RepairRun` ends in; a table's or sequence's is the one its schema outcome gives.
+3. **Routes (A2):** `rules`, `gemini`, `review`, `schema` (tables and sequences only), `none`.
+   Only `gemini`-route objects may have Gemini calls or Gemini attempts.
+4. **Gemini:** none recorded when `options.gemini` is off; requests (cache hits excluded)
+   never exceed `options.gemini_request_budget`, which must be stated when Gemini is on.
+5. **Metrics are computed**, never set: `metrics == RunMetrics.of(objects, schema_result, len(discovered))`.
+6. **Secrets:** `TargetEnvironment` keeps URLs and passwords as `SecretStr` and is not part of
+   any stored model.
+
+## Stand-ins
+
+- `app/migration/prepared_target.py`: `PreparedTargetSchema`, the `SchemaMigrator` until M3:
+  checks a prepared target (the F1 pre-flight, moved here from `scripts/run_repair.py`).
+- `backend/tests/contract_fakes.py`: `FakeMigrationEngine` (returns the sample run),
+  `FakeSchemaMigrator`, `RecordingProgress`.
+- `backend/tests/fixtures/migration_run_sample.json`: a real run of the sample (real converter,
+  deployer and repair loop on PostgreSQL; Oracle's recorded answers; Gemini off), made by
+  `scripts/build_run_fixture.py`.

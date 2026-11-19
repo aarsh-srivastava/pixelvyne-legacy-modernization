@@ -19,8 +19,14 @@ from datetime import datetime, timezone
 from html import escape
 from typing import Any, Iterable
 
-from app.contracts import CONTRACT_VERSION, ExecutionResult, TestStatus
-from app.orchestration.repair_loop import AttemptRecord, RepairOutcome, RepairRun
+from app.contracts import (
+    CONTRACT_VERSION,
+    AttemptRecord,
+    ExecutionResult,
+    RepairOutcome,
+    RepairRun,
+    TestStatus,
+)
 
 STAND_IN_MARKER = "Scripted stand-in"
 

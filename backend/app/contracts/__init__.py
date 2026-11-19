@@ -1,6 +1,15 @@
 """Stage contracts. Import from here rather than from another stage's internals."""
 
-from app.contracts.interfaces import Analyzer, Converter
+from app.contracts.interfaces import (
+    Analyzer,
+    Converter,
+    MigrationEngine,
+    ProgressSink,
+    ReportWriter,
+    SchemaMigrator,
+    SourceProvider,
+    Stage,
+)
 from app.contracts.object_ids import (
     OBJECT_ID_PATTERN,
     ObjectIdCollisionError,
@@ -16,10 +25,12 @@ from app.contracts.object_ids import (
 )
 from app.contracts.models import (
     CONTRACT_VERSION,
+    AttemptRecord,
     ConversionResult,
     ConversionTool,
     ExecutionError,
     ExecutionResult,
+    FailureCategory,
     FailureReport,
     FieldDiff,
     GenerationInfo,
@@ -29,6 +40,8 @@ from app.contracts.models import (
     ParamMode,
     PreviousAttempt,
     RepairContext,
+    RepairOutcome,
+    RepairRun,
     SetupCall,
     TableDiff,
     TestCase,
@@ -37,6 +50,33 @@ from app.contracts.models import (
     TriggerInfo,
     ValidationResult,
     ValidationStatus,
+)
+from app.contracts.pipeline import (
+    GeminiCall,
+    MigrationInputError,
+    MigrationOptions,
+    MigrationRun,
+    ObjectOutcome,
+    ObjectStatus,
+    Route,
+    RunMetrics,
+    RunStatus,
+    SourceFile,
+    SourceRef,
+    StatusCounts,
+    TargetEnvironment,
+    status_for_repair,
+    status_for_schema,
+)
+from app.contracts.schema_defs import (
+    ColumnDef,
+    ForeignKeyDef,
+    ParityCheck,
+    SchemaMigrationResult,
+    SchemaObjectOutcome,
+    SchemaObjectStatus,
+    SequenceDef,
+    TableDef,
 )
 
 __all__ = [
@@ -49,4 +89,14 @@ __all__ = [
     "OBJECT_ID_PATTERN", "ObjectIdCollisionError", "ObjectRef", "check_unique_object_ids",
     "default_schema", "is_object_id", "make_object_id", "make_unresolved_id",
     "normalize_identifier", "normalize_signature", "parse_object_id",
+    # repair runs, moved from orchestration/repair_loop.py (contract 0.7)
+    "AttemptRecord", "FailureCategory", "RepairOutcome", "RepairRun",
+    # pipeline (contract 0.7)
+    "GeminiCall", "MigrationEngine", "MigrationInputError", "MigrationOptions", "MigrationRun", "ObjectOutcome",
+    "ObjectStatus", "ProgressSink", "ReportWriter", "Route", "RunMetrics", "RunStatus", "SchemaMigrator",
+    "SourceFile", "SourceProvider", "SourceRef", "Stage", "StatusCounts", "TargetEnvironment",
+    "status_for_repair", "status_for_schema",
+    # schema metadata (contract 0.7)
+    "ColumnDef", "ForeignKeyDef", "ParityCheck", "SchemaMigrationResult", "SchemaObjectOutcome",
+    "SchemaObjectStatus", "SequenceDef", "TableDef",
 ]
