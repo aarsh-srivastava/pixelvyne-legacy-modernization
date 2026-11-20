@@ -2,7 +2,7 @@
 
 Agentic Oracle → PostgreSQL migration that proves the migrated code still behaves the
 same. Upload legacy SQL, and the platform discovers objects and dependencies, converts
-them (Ora2Pg → SQLGlot → Gemini), runs every object on **both** databases with the
+them (SQLGlot → Gemini, with deterministic conversion rules), runs every object on **both** databases with the
 same tests, loops failures back for repair, and reports the evidence.
 
 Translation is a commodity; **verified functional equivalence is the product.**
@@ -18,7 +18,7 @@ Translation is a commodity; **verified functional equivalence is the product.**
 | 5 | Platform DB with Alembic (projects, source files, jobs) | done |
 | 6 | Celery + Redis jobs, tracked in app-db | done |
 | 7 | Sample legacy system with planted traps (`samples/oracle/`) | done |
-| 8 | Ingestion → IR → conversion (Ora2Pg, SQLGlot, Gemini) | upload done; IR + conversion next |
+| 8 | Ingestion → IR → conversion (SQLGlot, Gemini) | upload done; IR + conversion next |
 | 9 | Validation: harness, comparator, test generation | next |
 | 10 | LangGraph workflow, human checkpoints, repair loop | |
 | 11 | React dashboard | |
@@ -69,7 +69,7 @@ backend/
     ingestion/           safe extraction of uploaded SQL / ZIP
     orchestration/       Celery tasks, job tracking, (next) LangGraph graph
     services/            llm_service.py: the only code that calls Gemini
-    migration/           (next) IR, Ora2Pg / SQLGlot / Gemini conversion
+    migration/           IR, SQLGlot conversion and gated Gemini fallback
     validation/          (next) execution harness, comparator, test generation
     reporting/           (next) migration report
   alembic/               migrations (0001: projects, source_files, jobs)
