@@ -68,8 +68,17 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 from app.config import settings  # noqa: E402
 from app.contracts import ObjectType  # noqa: E402
-from app.migration.compat import COMPAT_SCHEMA, PATH_CHECK_FUNCTION  # noqa: E402
-from app.migration.target_roles import DEPLOYER_ROLE, RUNNER_ROLE  # noqa: E402
+from app.migration.compat import COMPAT_SCHEMA  # noqa: E402
+from app.migration.prepared_target import (  # noqa: E402, F401 - the F1 pre-flight, moved there in 0.7
+    DEPLOYER_TABLE_PRIVILEGES,
+    PLATFORM_HELPER_ARGTYPES,
+    RESET_HINT,
+    ROLES_HINT,
+    RUNNER_SEQUENCE_PRIVILEGES,
+    RUNNER_TABLE_PRIVILEGES,
+    foreign_routines,
+    preflight,
+)
 from app.orchestration.repair_loop import (  # noqa: E402
     RepairDeps,
     RepairOutcome,
@@ -143,116 +152,6 @@ def show(run, prepared: int | None) -> None:
             for line in a.feedback_summary.splitlines()[1:]:
                 print(f"      {line}")
     print(f"  -> {OUTCOME_LABEL[run.outcome]}: {run.reason}")
-
-
-#: The one routine pv_deployer may find but not own: the platform helper (step 7d), exactly this
-#: signature and admin-owned. Anything else in pv_compat, or any other overload, still counts.
-PLATFORM_HELPER_ARGTYPES = "25 16"   # (text, boolean) as pg_proc.proargtypes
-
-
-def foreign_routines(conn) -> list[str]:
-    """Routines, views or triggers in the target that pv_deployer does not own (e.g. seeded stand-ins).
-
-    Only the approved platform helper is not counted, and only while a superuser owns it; the
-    pre-flight checks the helper separately. Routines are reported as schema.name(argument types).
-    """
-    rows = conn.execute(
-        "SELECT n.nspname || '.' || p.proname || '(' || oidvectortypes(p.proargtypes) || ')' "
-        "  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_roles r ON r.oid = p.proowner "
-        " WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND r.rolname <> 'pv_deployer' "
-        "   AND NOT (n.nspname = %s AND p.proname = %s AND p.proargtypes = %s::oidvector AND r.rolsuper)",
-        (COMPAT_SCHEMA, PATH_CHECK_FUNCTION, PLATFORM_HELPER_ARGTYPES),
-    ).fetchall()
-    found = [r[0] for r in rows]
-    views = conn.execute(
-        "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-        "WHERE c.relkind = 'v' AND n.nspname = 'public' AND pg_get_userbyid(c.relowner) <> 'pv_deployer'"
-    ).fetchall()
-    return sorted(found + [f"public.{v[0]} (view)" for v in views])
-
-
-# What setup_target_roles.py grants (target_roles.ensure_roles); the pre-flight checks exactly these.
-DEPLOYER_TABLE_PRIVILEGES = ("SELECT", "REFERENCES", "TRIGGER")
-RUNNER_TABLE_PRIVILEGES = ("SELECT", "INSERT", "UPDATE", "DELETE")
-RUNNER_SEQUENCE_PRIVILEGES = ("USAGE", "SELECT")
-RESET_HINT = "run scripts/seed_target.py --schema-only, then scripts/setup_target_roles.py"
-ROLES_HINT = "run scripts/setup_target_roles.py"
-
-
-def _missing(conn, role: str, kind: str, found: dict[str, int], privileges: tuple[str, ...]) -> list[str]:
-    """'name (PRIV, PRIV)' for each existing public table or sequence the role lacks privileges on.
-
-    By OID, so the check works even when the connection itself has no USAGE on public (a name
-    would have to be looked up in the schema first, which needs that USAGE)."""
-    out = []
-    for name, oid in sorted(found.items()):
-        lacking = [p for p in privileges
-                   if not conn.execute(f"SELECT has_{kind}_privilege(%s, %s::oid, %s)", (role, oid, p)).fetchone()[0]]
-        if lacking:
-            out.append(f"{name} ({', '.join(lacking)})")
-    return out
-
-
-def preflight(deployer, runner, *, database: str, tables: list[str], sequences: list[str]) -> list[str]:
-    """Every reason the target is not ready for the real converter; empty when it is.
-
-    Read-only catalogue queries (both connections are rolled back afterwards). Called before
-    the converter or Gemini exists, so a failure here costs no Gemini call.
-    """
-    problems: list[str] = []
-    try:
-        for conn, role, variable in ((deployer, DEPLOYER_ROLE, "TARGET_DEPLOYER_URL"),
-                                     (runner, RUNNER_ROLE, "TARGET_RUNNER_URL")):
-            user, db = conn.execute("SELECT current_user, current_database()").fetchone()
-            if user != role:
-                problems.append(f"the {role} connection runs as {user}, not {role}: check {variable}")
-            if db != database:
-                problems.append(f"the {role} connection is on database {db}, not {database}: check {variable} "
-                                "and TARGET_DATABASE_NAME")
-
-        rows = deployer.execute(
-            "SELECT c.relname, c.relkind, c.oid FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-            "WHERE n.nspname = 'public' AND c.relname = ANY(%s)", (tables + sequences,)).fetchall()
-        found_tables = {n: oid for n, k, oid in rows if k in ("r", "p") and n in tables}
-        found_sequences = {n: oid for n, k, oid in rows if k == "S" and n in sequences}
-        for kind, wanted, found in (("table", tables, found_tables), ("sequence", sequences, found_sequences)):
-            absent = sorted(set(wanted) - set(found))
-            if absent:
-                problems.append(f"missing {kind}(s) in public: {', '.join(absent)}: {RESET_HINT}")
-
-        for role, privilege in ((DEPLOYER_ROLE, "USAGE"), (DEPLOYER_ROLE, "CREATE"), (RUNNER_ROLE, "USAGE")):
-            if not deployer.execute("SELECT has_schema_privilege(%s, 'public', %s)", (role, privilege)).fetchone()[0]:
-                problems.append(f"{role} lacks {privilege} on schema public: {ROLES_HINT}")
-        for role, kind, names, privileges in (
-            (DEPLOYER_ROLE, "table", found_tables, DEPLOYER_TABLE_PRIVILEGES),
-            (RUNNER_ROLE, "table", found_tables, RUNNER_TABLE_PRIVILEGES),
-            (RUNNER_ROLE, "sequence", found_sequences, RUNNER_SEQUENCE_PRIVILEGES),
-        ):
-            lacking = _missing(deployer, role, kind, names, privileges)
-            if lacking:
-                problems.append(f"{role} lacks rights on {kind}(s) {'; '.join(lacking)}: {ROLES_HINT}")
-
-        helper = deployer.execute(
-            "SELECT p.oid, r.rolname, r.rolsuper FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
-            "JOIN pg_roles r ON r.oid = p.proowner "
-            "WHERE n.nspname = %s AND p.proname = %s AND p.proargtypes = '25 16'::oidvector",
-            (COMPAT_SCHEMA, PATH_CHECK_FUNCTION)).fetchone()
-        if helper is None:
-            problems.append(f"{COMPAT_SCHEMA}.{PATH_CHECK_FUNCTION}(text, boolean) is not installed: {ROLES_HINT}")
-        else:
-            if not helper[2]:   # admin-owned by design; the two restricted roles are never superusers
-                problems.append(f"{COMPAT_SCHEMA}.{PATH_CHECK_FUNCTION} is owned by {helper[1]}, not by the admin "
-                                f"that ran setup: {ROLES_HINT}")
-            for role in (DEPLOYER_ROLE, RUNNER_ROLE):
-                usable = deployer.execute(
-                    "SELECT has_schema_privilege(%s, %s, 'USAGE') AND has_function_privilege(%s, %s, 'EXECUTE')",
-                    (role, COMPAT_SCHEMA, role, helper[0])).fetchone()[0]
-                if not usable:
-                    problems.append(f"{role} cannot use {COMPAT_SCHEMA}.{PATH_CHECK_FUNCTION}: {ROLES_HINT}")
-    finally:
-        deployer.rollback()
-        runner.rollback()
-    return problems
 
 
 def redis_problem(url: str) -> str | None:

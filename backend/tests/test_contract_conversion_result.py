@@ -91,4 +91,6 @@ def test_the_schema_export_stamps_the_current_version(tmp_path):
     assert {p.name for p in tmp_path.glob("*.schema.json")} == {
         f"{name}.schema.json" for name in ("IRObject", "ConversionResult", "TestCase", "ExecutionResult",
                                            "TestOutcome", "FailureReport", "ValidationResult",
-                                           "RepairContext")}
+                                           "RepairContext", "RepairRun", "TableDef", "SequenceDef",
+                                           "SchemaMigrationResult", "SourceFile", "MigrationOptions",
+                                           "MigrationRun")}

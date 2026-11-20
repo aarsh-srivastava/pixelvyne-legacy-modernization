@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.orchestration.repair_loop import RepairRun  # noqa: E402
+from app.contracts import RepairRun  # noqa: E402
 from app.reporting.migration_report import ReportSummary, render_report  # noqa: E402
 from app.validation.golden_tests import GOLDEN_TESTS  # noqa: E402
 

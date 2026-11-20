@@ -9,14 +9,17 @@ import json
 import os
 from pathlib import Path
 
-from app.contracts import models
+from app.contracts import models, pipeline, schema_defs
 
 OUT = Path(os.getenv("CONTRACTS_DIR", Path(__file__).resolve().parents[3] / "contracts"))
 
 EXPORT = [
     models.IRObject, models.ConversionResult, models.TestCase, models.ExecutionResult,
     models.TestOutcome, models.FailureReport, models.ValidationResult, models.RepairContext,
-]
+    models.RepairRun,                                                   # 0.7: moved into contracts
+    schema_defs.TableDef, schema_defs.SequenceDef, schema_defs.SchemaMigrationResult,
+    pipeline.SourceFile, pipeline.MigrationOptions, pipeline.MigrationRun,
+]   # TargetEnvironment is left out on purpose: it is never stored or sent to a client
 
 
 def main() -> None:

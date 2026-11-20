@@ -8,6 +8,8 @@ Flow of data:
     conversion  -> ConversionResult
     validation  -> TestCase, ExecutionResult, TestOutcome, ValidationResult
     repair      -> FailureReport, fed back into convert(obj, feedback=...)
+                -> RepairRun (one per object: every AttemptRecord, the outcome and why)
+    pipeline    -> MigrationRun (pipeline.py): every source object's final status (0.7)
 """
 
 from __future__ import annotations
@@ -21,9 +23,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.contracts.object_ids import normalize_identifier, parse_object_id
 
+# 0.7: pipeline contracts (pipeline.py, schema_defs.py); RepairRun, AttemptRecord, RepairOutcome
+#      and FailureCategory moved here from orchestration/repair_loop.py (still re-exported there);
 # 0.6: TestCase.generation, ExecutionError.context; 0.5: TestCase.setup/action/order_by;
 # 0.4: RepairContext, failure_code; 0.3: .model
-CONTRACT_VERSION = "0.6"
+CONTRACT_VERSION = "0.7"
 
 
 # ---------------------------------------------------------------- enums
@@ -345,3 +349,65 @@ class RepairContext(BaseModel):
         if validation.conversion_version == self.previous.version and not self.previous.deployed:
             raise ValueError(f"v{self.previous.version} did not deploy, so it cannot have been tested")
         return self
+
+
+# ---------------------------------------------------------------- repair runs (moved here in 0.7)
+#
+# Moved unchanged from orchestration/repair_loop.py (which still re-exports them), so that
+# reporting and storage read a repair run without importing the engine. Only the numeric
+# bounds below are new: attempts and versions start at 1, counts are never negative.
+
+class RepairOutcome(str, Enum):
+    PASSED = "passed"                            # every test passed
+    PASSED_NEEDS_REVIEW = "passed_needs_review"  # passed, but the converter flagged it for sign-off
+    NEEDS_HUMAN = "needs_human"                  # stopped, out of attempts, or the harness could not judge
+
+
+class FailureCategory(str, Enum):
+    """Why a run ended NEEDS_HUMAN (or why one attempt failed)."""
+
+    UNSUPPORTED = "unsupported"            # D5 REVIEW, not eligible, no rule, secret in source: a human's job
+    NO_REPAIR_ROUTE = "no_repair_route"    # the converter cannot produce a different version
+    DEPLOY_FAILED = "deploy_failed"        # PostgreSQL rejected the code
+    DEPLOY_REFUSED = "deploy_refused"      # the deployer's safety checks refused the code
+    TESTS_FAILED = "tests_failed"          # deployed, but behaves differently from Oracle
+    GEMINI_FAILED = "gemini_failed"        # Gemini/API/Redis error, malformed answer, Gemini declined
+    UNCHANGED_OUTPUT = "unchanged_output"  # Gemini returned the previous code again (D-6.4)
+    INVALID_EVIDENCE = "invalid_evidence"  # the repair evidence did not match this run's attempt
+    HARNESS_ERROR = "harness_error"        # the tests could not be judged
+    CONVERTER_ERROR = "converter_error"    # unexpected error inside the converter
+
+
+class AttemptRecord(BaseModel):
+    """One convert + validate round, kept for the report."""
+
+    attempt: int = Field(ge=1)
+    version: int = Field(ge=1)
+    tool: ConversionTool
+    compiled_ok: bool                            # PostgreSQL deployed it (not: it behaves like Oracle)
+    compile_error: str | None = None
+    failure_code: str | None = None              # the converter's code when it did not deploy (7a)
+    category: FailureCategory | None = None      # why this attempt failed, if it did (7a)
+    model: str | None = None                     # the LLM asked for this attempt, if any (7a)
+    needs_review: bool = False                   # the converter asked for human sign-off (7a)
+    status: ValidationStatus | None = None       # None when it did not compile
+    passed: int = Field(default=0, ge=0)
+    failed: int = Field(default=0, ge=0)
+    errors: int = Field(default=0, ge=0)
+    failing_tests: list[str] = Field(default_factory=list)
+    feedback_summary: str | None = None          # what was sent back for the next attempt
+
+
+class RepairRun(BaseModel):
+    """Everything the report needs about one object's trip through the loop."""
+
+    object_id: str
+    outcome: RepairOutcome
+    reason: str
+    attempts: list[AttemptRecord]
+    final_conversion: ConversionResult | None = None
+    final_validation: ValidationResult | None = None   # only a test run of final_conversion's version
+    run_id: str | None = None                          # (7a) one per run; older reports have none
+    category: FailureCategory | None = None            # (7a) why NEEDS_HUMAN; None when passed
+    last_validation: ValidationResult | None = None    # (7a) the last test run, whatever version it tested
+    last_deployed_version: int | None = None           # (7a) the version PostgreSQL holds after the run
