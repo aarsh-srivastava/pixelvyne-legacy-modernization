@@ -261,7 +261,9 @@ def test_a_table_status_follows_its_schema_outcome():
 
 def test_prepared_mode_reports_only_present_missing_or_mismatch():
     data = sample()["schema_result"]
-    data["objects"][0]["status"] = "created"
+    # a sequence, so the outcome itself is valid and only the mode rule refuses it
+    # (a created table without copy evidence is refused earlier; PR #13 review, 20 Nov)
+    next(o for o in data["objects"] if o["object_id"].startswith("sequence:"))["status"] = "created"
     with pytest.raises(ValidationError, match="prepared mode cannot report"):
         SchemaMigrationResult.model_validate(data)
 
@@ -804,13 +806,15 @@ def test_parity_is_verified_only_when_every_table_matches_in_rows_and_checksum()
     same = ParityCheck(oracle_rows=12, target_rows=12, oracle_checksum="a", target_checksum="a")
     assert not ParityCheck(oracle_rows=12, target_rows=11).matches
     assert not ParityCheck(oracle_rows=12, target_rows=11, oracle_checksum="a", target_checksum="a").matches
-    other = SchemaObjectOutcome(object_id="table:legacy.departments", status="created", reason="r",
+    # A table without a parity check is no longer created (PR #13 review, 20 Nov): it is failed,
+    # so a run with one is not ok, and its parity is not_checked rather than verified.
+    other = SchemaObjectOutcome(object_id="table:legacy.departments", status="failed", reason="not copied",
                                 definition=TableDef(object_id="table:legacy.departments", target_name="departments",
                                                     columns=[ColumnDef(name="d", oracle_type="NUMBER",
                                                                        pg_type="numeric")]))
     partly = SchemaMigrationResult(mode="migrated", migrator="m", database="t",
                                    objects=[_table_outcome("created", same, rows=12), other])
-    assert partly.parity == "not_checked"
+    assert partly.parity == "not_checked" and not partly.ok
 
 
 # --- Aarsh's v0.7 review, 19 Nov: exact version, and parity needs checksum evidence ------
@@ -843,7 +847,7 @@ def test_row_counts_alone_give_rows_only_never_verified():
                                 definition=TableDef(object_id="table:legacy.departments", target_name="departments",
                                                     columns=[ColumnDef(name="d", oracle_type="NUMBER",
                                                                        pg_type="numeric")]),
-                                parity=rows_only, rows_copied=4)
+                                parity=rows_only, rows_copied=12)
     result = SchemaMigrationResult(mode="migrated", migrator="m", database="t",
                                    objects=[_table_outcome("created", full, rows=12), other])
     assert result.parity == "rows_only" and result.ok   # created and usable, but A15 is not verified
@@ -852,3 +856,56 @@ def test_row_counts_alone_give_rows_only_never_verified():
     assert alone.parity == "rows_only"
     metrics = RunMetrics.of([], result, 0)
     assert metrics.schema_parity == "rows_only"
+
+
+# --- Aarsh's PR #13 review, 20 Nov: created means created and copied ------------------------
+
+
+@pytest.mark.parametrize(
+    ("rows", "parity"),
+    [(None, None), (12, None), (None, ParityCheck(oracle_rows=12, target_rows=12, oracle_checksum="a", target_checksum="a"))],
+)
+def test_a_created_table_needs_its_copy_evidence(rows, parity):
+    with pytest.raises(ValidationError, match=r"a created table needs its copy evidence \(rows_copied and parity\)"):
+        _table_outcome("created", parity, rows=rows)
+
+
+def test_rows_copied_must_be_the_targets_row_count():
+    parity = ParityCheck(oracle_rows=12, target_rows=12, oracle_checksum="a", target_checksum="a")
+    with pytest.raises(ValidationError, match=r"rows_copied \(11\) is not the target's row count in parity \(12\)"):
+        _table_outcome("created", parity, rows=11)
+    assert _table_outcome("created", parity, rows=12).ready
+
+
+def test_a_created_but_uncopied_table_is_failed_and_the_run_is_not_ok():
+    failed = _table_outcome("failed", rows=None)
+    result = SchemaMigrationResult(mode="migrated", migrator="m", database="t", objects=[failed])
+    assert not failed.ready and not result.ok and result.parity == "not_checked"
+
+
+def test_a_created_sequence_needs_no_copy_evidence():
+    sequence = SchemaObjectOutcome(object_id="sequence:legacy.s", status="created", reason="r",
+                                   definition=SequenceDef(object_id="sequence:legacy.s", target_name="s"))
+    assert sequence.ready
+
+
+def test_a_created_table_with_zero_rows_copied_is_valid():
+    """An empty source table copies zero rows: that is copy evidence, not missing evidence."""
+    empty = ParityCheck(oracle_rows=0, target_rows=0, oracle_checksum="e", target_checksum="e")
+    outcome = _table_outcome("created", empty, rows=0)
+    assert outcome.ready and outcome.rows_copied == 0
+    result = SchemaMigrationResult(mode="migrated", migrator="m", database="t", objects=[outcome])
+    assert result.ok and result.parity == "verified"
+    rows_only = _table_outcome("created", ParityCheck(oracle_rows=0, target_rows=0), rows=0)
+    assert rows_only.ready
+    with pytest.raises(ValidationError, match=r"rows_copied \(1\) is not the target's row count in parity \(0\)"):
+        _table_outcome("created", empty, rows=1)
+
+
+def test_a_created_table_whose_parity_differs_is_refused_even_with_matching_rows_copied():
+    differs = ParityCheck(oracle_rows=12, target_rows=11, oracle_checksum="a", target_checksum="b")
+    with pytest.raises(ValidationError, match="is a mismatch, not ready"):
+        _table_outcome("created", differs, rows=11)
+    same_rows_other_checksum = ParityCheck(oracle_rows=12, target_rows=12, oracle_checksum="a", target_checksum="b")
+    with pytest.raises(ValidationError, match="is a mismatch, not ready"):
+        _table_outcome("created", same_rows_other_checksum, rows=12)

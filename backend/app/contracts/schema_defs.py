@@ -14,7 +14,10 @@ reason. Two modes:
   copied, so statuses are ``present``, ``missing`` or ``mismatch`` and parity is not checked.
 * ``migrated``: the real schema migrator (M3) creates the tables and sequences and copies
   the data: statuses are ``created``, ``mismatch`` or ``failed``, with row counts and, per
-  table, a ``ParityCheck`` against Oracle. Parity is ``verified`` only when every table's
+  table, a ``ParityCheck`` against Oracle. Creating and copying are one step: ``created``
+  means both are done, so a ``created`` table must carry ``rows_copied`` and a ``parity``
+  that does not differ, with ``rows_copied`` equal to the target's row count. A table that
+  was created but not (fully) copied is ``failed`` (Aarsh's PR #13 review, 20 Nov). Parity is ``verified`` only when every table's
   row counts AND checksums match; matching row counts without checksums are the weaker
   ``rows_only`` (Aarsh's v0.7 review, 19 Nov).
 
@@ -201,11 +204,11 @@ class ParityCheck(BaseModel):
 
 
 class SchemaObjectStatus(str, Enum):
-    CREATED = "created"      # migrated mode: created (and its data copied) by this run
+    CREATED = "created"      # migrated mode: created AND its data copied by this run (tables carry the evidence)
     PRESENT = "present"      # prepared mode: already in the target as expected
     MISSING = "missing"      # prepared mode: not in the target
     MISMATCH = "mismatch"    # in the target, but not as the source defines it (columns, keys, rights, data)
-    FAILED = "failed"        # migrated mode: could not be created or copied
+    FAILED = "failed"        # migrated mode: could not be created, or created but not (fully) copied
 
 
 #: Which statuses each mode may report.
@@ -250,6 +253,14 @@ class SchemaObjectOutcome(BaseModel):
             raise ValueError("rows and parity apply to tables only")
         if self.parity is not None and self.parity.differs and self.status in READY:
             raise ValueError("a table whose data does not match Oracle is a mismatch, not ready")
+        if is_table and self.status is SchemaObjectStatus.CREATED:
+            # created means created and copied: say how many rows, and show the parity check
+            if self.rows_copied is None or self.parity is None:
+                raise ValueError("a created table needs its copy evidence (rows_copied and parity); "
+                                 "a table created but not copied is failed")
+            if self.rows_copied != self.parity.target_rows:
+                raise ValueError(f"rows_copied ({self.rows_copied}) is not the target's row count "
+                                 f"in parity ({self.parity.target_rows})")
         return self
 
     @property
