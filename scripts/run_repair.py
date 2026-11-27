@@ -106,7 +106,7 @@ EXIT_ALL_PASSED, EXIT_NEEDS_HUMAN, EXIT_NOT_RUN, EXIT_NEEDS_SIGN_OFF = 0, 1, 2, 
 
 OUTCOME_LABEL = {
     RepairOutcome.PASSED: "PASSED",
-    RepairOutcome.PASSED_NEEDS_REVIEW: "PASSED, needs sign-off",
+    RepairOutcome.PASSED_NEEDS_REVIEW: "VALIDATION PASSED, semantic sign-off required",
     RepairOutcome.NEEDS_HUMAN: "NEEDS HUMAN",
 }
 

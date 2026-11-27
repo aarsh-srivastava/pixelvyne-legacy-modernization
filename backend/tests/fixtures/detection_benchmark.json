@@ -1,0 +1,441 @@
+{
+ "description": "PR 1 / G4: labelled detection benchmark. expected_route rule = eligible for deterministic rules; llm or review = not eligible. Held-out snippets (Aarsh) are added with group 'held_out' and reported on their own.",
+ "version": 1,
+ "snippets": [
+  {
+   "id": "sup-01",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "SELECT NVL(base_salary, 0) INTO v FROM employees WHERE emp_id = p_id;",
+   "expected_feature": "NVL",
+   "expected_line": 1
+  },
+  {
+   "id": "sup-02",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "SELECT DECODE(status, 'ACTIVE', 1, 0) INTO v FROM employees WHERE emp_id = 1;",
+   "expected_feature": "DECODE",
+   "expected_line": 1
+  },
+  {
+   "id": "sup-03",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "v_today := TRUNC(SYSDATE);",
+   "expected_feature": "SYSDATE",
+   "expected_line": 1
+  },
+  {
+   "id": "sup-04",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "v_next := ADD_MONTHS(v_date, 1);\nv_end := LAST_DAY(v_next);",
+   "expected_feature": "LAST_DAY",
+   "expected_line": 2
+  },
+  {
+   "id": "sup-05",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "BEGIN\n  FOR r IN (SELECT emp_id FROM employees) LOOP\n    NULL;\n  END LOOP;\nEND;",
+   "expected_feature": "CURSOR_FOR_LOOP",
+   "expected_line": 2
+  },
+  {
+   "id": "sup-06",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "DECLARE\n  v_salary employees.base_salary%TYPE;\nBEGIN\n  NULL;\nEND;",
+   "expected_feature": "TYPE_ANCHOR",
+   "expected_line": 2
+  },
+  {
+   "id": "sup-07",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "BEGIN\n  SELECT base_salary INTO v FROM employees WHERE emp_id = 1;\nEXCEPTION WHEN NO_DATA_FOUND THEN\n  v := 0;\nEND;",
+   "expected_feature": "EXCEPTION_HANDLER",
+   "expected_line": 3
+  },
+  {
+   "id": "sup-08",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "INSERT INTO payroll_runs (run_id, emp_id) VALUES (payroll_run_seq.NEXTVAL, 1);",
+   "expected_feature": "SEQUENCE",
+   "expected_line": 1
+  },
+  {
+   "id": "sup-09",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "SELECT dept_id, COUNT(*) INTO a, b FROM employees GROUP BY dept_id HAVING COUNT(*) > 1;"
+  },
+  {
+   "id": "sup-10",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "SELECT DISTINCT dept_id INTO v FROM employees WHERE full_name LIKE 'A%' AND base_salary BETWEEN 1 AND 2;"
+  },
+  {
+   "id": "sup-11",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "SELECT emp_id FROM employees UNION ALL SELECT dept_id FROM departments"
+  },
+  {
+   "id": "sup-12",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "SELECT * FROM (SELECT emp_id FROM employees ORDER BY base_salary DESC) WHERE ROWNUM <= 3",
+   "expected_feature": "ROWNUM_TOP_N",
+   "expected_line": 1
+  },
+  {
+   "id": "sup-13",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "BEGIN\n  IF :NEW.base_salary <> :OLD.base_salary THEN\n    NULL;\n  END IF;\nEND;",
+   "expected_feature": "TRIGGER_ROW_REF",
+   "expected_line": 2
+  },
+  {
+   "id": "sup-14",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "v := CASE WHEN p_rating = 'A' THEN 0.2 ELSE 0 END;"
+  },
+  {
+   "id": "sup-15",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "SELECT UPPER(full_name), COALESCE(email, full_name) INTO a, b FROM employees WHERE emp_id = 1;"
+  },
+  {
+   "id": "sup-16",
+   "group": "supported",
+   "expected_route": "rule",
+   "source": "v_total := ROUND(SUM_v * 1.1, 2) || ' INR';",
+   "expected_feature": "CONCAT",
+   "expected_line": 1
+  },
+  {
+   "id": "llm-01",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "SELECT emp_id FROM employees START WITH manager_id IS NULL CONNECT BY PRIOR emp_id = manager_id",
+   "expected_feature": "CONNECT_BY",
+   "expected_line": 1
+  },
+  {
+   "id": "llm-02",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "SELECT e.emp_id FROM employees e, departments d WHERE e.dept_id = d.dept_id(+)",
+   "expected_feature": "OUTER_JOIN_PLUS",
+   "expected_line": 1
+  },
+  {
+   "id": "llm-03",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "MERGE INTO employees e USING staging s ON (e.emp_id = s.emp_id)\nWHEN MATCHED THEN UPDATE SET e.base_salary = s.base_salary;",
+   "expected_feature": "MERGE",
+   "expected_line": 1
+  },
+  {
+   "id": "llm-04",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "DECLARE\n  CURSOR c IS SELECT emp_id FROM employees;\n  v NUMBER;\nBEGIN\n  OPEN c;\n  FETCH c INTO v;\n  CLOSE c;\nEND;",
+   "expected_feature": "EXPLICIT_CURSOR",
+   "expected_line": 2
+  },
+  {
+   "id": "llm-05",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "DECLARE\n  TYPE t_ids IS TABLE OF NUMBER;\n  v_ids t_ids;\nBEGIN\n  SELECT emp_id BULK COLLECT INTO v_ids FROM employees;\nEND;",
+   "expected_feature": "COLLECTION",
+   "expected_line": 2
+  },
+  {
+   "id": "llm-06",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "BEGIN\n  RAISE_APPLICATION_ERROR(-20001, 'bad salary');\nEND;",
+   "expected_feature": "RAISE_APPLICATION_ERROR",
+   "expected_line": 2
+  },
+  {
+   "id": "llm-07",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "BEGIN\n  DBMS_OUTPUT.PUT_LINE('done');\nEND;",
+   "expected_feature": "DBMS_OUTPUT",
+   "expected_line": 2
+  },
+  {
+   "id": "llm-08",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "SELECT LISTAGG(full_name, ',') WITHIN GROUP (ORDER BY full_name) INTO v FROM employees;",
+   "expected_feature": "ORACLE_FUNCTION",
+   "expected_line": 1
+  },
+  {
+   "id": "llm-09",
+   "group": "recognised_gemini",
+   "expected_route": "llm",
+   "source": "IF REGEXP_LIKE(email, '^[a-z]+@') THEN v := 1; END IF;",
+   "expected_feature": "ORACLE_FUNCTION",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-01",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN (1, 2, 3, 4))",
+   "expected_feature": "PIVOT",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-02",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "SELECT * FROM sales UNPIVOT (amount FOR quarter IN (q1, q2))",
+   "expected_feature": "PIVOT",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-03",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "SELECT * FROM sales\nMODEL DIMENSION BY (yr) MEASURES (amt) RULES (amt[2027] = amt[2026] * 1.1)",
+   "expected_feature": "MODEL",
+   "expected_line": 2
+  },
+  {
+   "id": "rev-04",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "SELECT * FROM employees AS OF TIMESTAMP (SYSTIMESTAMP - INTERVAL '1' HOUR)",
+   "expected_feature": "FLASHBACK",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-05",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "CREATE OR REPLACE FUNCTION f RETURN t_tab PIPELINED IS\nBEGIN\n  PIPE ROW (1);\n  RETURN;\nEND;",
+   "expected_feature": "PIPELINED",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-06",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "DECLARE\n  v_doc XMLTYPE;\nBEGIN\n  NULL;\nEND;",
+   "expected_feature": "XML",
+   "expected_line": 2
+  },
+  {
+   "id": "rev-07",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "BEGIN\n  GOTO finish;\n  <<finish>>\n  NULL;\nEND;",
+   "expected_feature": "GOTO",
+   "expected_line": 2
+  },
+  {
+   "id": "rev-08",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "BEGIN\n  UPDATE employees SET base_salary = base_salary + 1;\n  v := SQL%ROWCOUNT;\nEND;",
+   "expected_feature": "IMPLICIT_CURSOR_ATTRIBUTE",
+   "expected_line": 3
+  },
+  {
+   "id": "rev-09",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "DELETE FROM employees WHERE ROWID = v_rowid",
+   "expected_feature": "ROWID",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-10",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "SELECT emp_id FROM employees MINUS SELECT emp_id FROM payroll_runs",
+   "expected_feature": "MINUS",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-11",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "BEGIN\n  EXECUTE IMMEDIATE 'TRUNCATE TABLE staging';\nEND;",
+   "expected_feature": "DYNAMIC_SQL",
+   "expected_line": 2
+  },
+  {
+   "id": "rev-12",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "BEGIN\n  UPDATE employees SET status = 'X';\n  COMMIT;\nEND;",
+   "expected_feature": "TRANSACTION_CONTROL",
+   "expected_line": 3
+  },
+  {
+   "id": "rev-13",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "DECLARE\n  PRAGMA AUTONOMOUS_TRANSACTION;\nBEGIN\n  NULL;\nEND;",
+   "expected_feature": "AUTONOMOUS_TRANSACTION",
+   "expected_line": 2
+  },
+  {
+   "id": "rev-14",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "SELECT COUNT(*) INTO v FROM employees@hq_link;",
+   "expected_feature": "DATABASE_LINK",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-15",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "BEGIN\n  UTL_FILE.PUT_LINE(f, 'x');\nEND;",
+   "expected_feature": "SYSTEM_PACKAGE",
+   "expected_line": 2
+  },
+  {
+   "id": "rev-16",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "SELECT emp_id INTO v FROM employees WHERE ROWNUM = 1;",
+   "expected_feature": "ROWNUM",
+   "expected_line": 1
+  },
+  {
+   "id": "rev-17",
+   "group": "recognised_review",
+   "expected_route": "review",
+   "source": "SELECT MAX(base_salary) KEEP (DENSE_RANK FIRST ORDER BY hire_date) INTO v FROM employees;",
+   "expected_feature": "KEEP_DENSE_RANK",
+   "expected_line": 1
+  },
+  {
+   "id": "unk-01",
+   "group": "not_recognised",
+   "expected_route": "review",
+   "source": "v_text := TO_CHAR(v_date, 'DD-MON-YYYY');",
+   "expected_feature": "UNKNOWN_CONSTRUCT",
+   "expected_line": 1
+  },
+  {
+   "id": "unk-02",
+   "group": "not_recognised",
+   "expected_route": "review",
+   "source": "v_part := SUBSTR(v_name, 1, 3);",
+   "expected_feature": "UNKNOWN_CONSTRUCT",
+   "expected_line": 1
+  },
+  {
+   "id": "unk-03",
+   "group": "not_recognised",
+   "expected_route": "review",
+   "source": "v_code := LPAD(v_id, 6, '0');",
+   "expected_feature": "UNKNOWN_CONSTRUCT",
+   "expected_line": 1
+  },
+  {
+   "id": "unk-04",
+   "group": "not_recognised",
+   "expected_route": "review",
+   "source": "BEGIN\n  v := WIDTH_BUCKET(v_salary, 0, 100000, 10);\nEND;",
+   "expected_feature": "UNKNOWN_CONSTRUCT",
+   "expected_line": 2
+  },
+  {
+   "id": "unk-05",
+   "group": "not_recognised",
+   "expected_route": "review",
+   "source": "v_low := LEAST(v_a, v_b);",
+   "expected_feature": "UNKNOWN_CONSTRUCT",
+   "expected_line": 1
+  },
+  {
+   "id": "unk-06",
+   "group": "not_recognised",
+   "expected_route": "review",
+   "source": "BEGIN\n  v := bonus_engine(v_id);\nEND;",
+   "expected_feature": "UNKNOWN_CONSTRUCT",
+   "expected_line": 2
+  },
+  {
+   "id": "unk-07",
+   "group": "not_recognised",
+   "expected_route": "review",
+   "source": "v_cs := v_name%CHARSETID;",
+   "expected_feature": "UNKNOWN_CONSTRUCT",
+   "expected_line": 1
+  },
+  {
+   "id": "unk-08",
+   "group": "not_recognised",
+   "expected_route": "review",
+   "source": "BEGIN\n  LOCK TABLE employees IN EXCLUSIVE MODE;\nEND;",
+   "expected_feature": "UNKNOWN_CONSTRUCT",
+   "expected_line": 2
+  },
+  {
+   "id": "trap-01",
+   "group": "trap",
+   "expected_route": "rule",
+   "source": "-- PIVOT, GOTO, TO_CHAR(x) and ROWID are only mentioned here\nSELECT NVL(base_salary, 0) INTO v FROM employees WHERE emp_id = 1;"
+  },
+  {
+   "id": "trap-02",
+   "group": "trap",
+   "expected_route": "rule",
+   "source": "v_msg := 'call TO_CHAR( and GOTO, PIVOT ( are just text';"
+  },
+  {
+   "id": "trap-03",
+   "group": "trap",
+   "expected_route": "rule",
+   "source": "SELECT employee_level, employee_date, model_name INTO a, b, c FROM staff WHERE staff_id = 1;"
+  },
+  {
+   "id": "trap-04",
+   "group": "trap",
+   "expected_route": "rule",
+   "source": "SELECT \"LEVEL\", \"DATE\" INTO a, b FROM legacy_codes WHERE code_id = 1;"
+  },
+  {
+   "id": "trap-05",
+   "group": "trap",
+   "expected_route": "rule",
+   "source": "v_note := q'[SQL%ROWCOUNT and XMLTYPE inside a q-quoted string]';"
+  },
+  {
+   "id": "trap-06",
+   "group": "trap",
+   "expected_route": "rule",
+   "source": "INSERT INTO salary_audit (audit_id, emp_id) VALUES (1, 2);"
+  },
+  {
+   "id": "trap-07",
+   "group": "trap",
+   "expected_route": "rule",
+   "source": "BEGIN\n  v := calc_bonus(102);\nEND;",
+   "names": [
+    "calc_bonus"
+   ]
+  }
+ ]
+}
