@@ -50,20 +50,21 @@ import inspect
 import operator
 import uuid
 from dataclasses import dataclass
-from enum import Enum
 from typing import Annotated, Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
-from pydantic import BaseModel, Field
 
 from app.contracts import (
+    AttemptRecord,
     ConversionResult,
-    ConversionTool,
     Converter,
+    FailureCategory,
     FailureReport,
     IRObject,
     PreviousAttempt,
     RepairContext,
+    RepairOutcome,
+    RepairRun,
     TestCase,
     TestStatus,
     ValidationResult,
@@ -72,28 +73,15 @@ from app.contracts import (
 
 DEFAULT_MAX_ATTEMPTS = 3
 
+# RepairOutcome, FailureCategory, AttemptRecord and RepairRun are contracts since 0.7
+# (app.contracts.models). They are re-exported here, so existing imports keep working.
+__all__ = [
+    "DEFAULT_MAX_ATTEMPTS", "RETRYABLE_CODES", "AttemptRecord", "FailureCategory", "RepairDeps", "RepairOutcome",
+    "RepairRun", "RepairState", "ValidateFn", "build_repair_graph", "can_retry", "failure_category",
+    "repair_context", "run_repair_loop", "summarize_failures",
+]
+
 ValidateFn = Callable[[IRObject, list[TestCase], int], ValidationResult]
-
-
-class RepairOutcome(str, Enum):
-    PASSED = "passed"                            # every test passed
-    PASSED_NEEDS_REVIEW = "passed_needs_review"  # passed, but the converter flagged it for sign-off
-    NEEDS_HUMAN = "needs_human"                  # stopped, out of attempts, or the harness could not judge
-
-
-class FailureCategory(str, Enum):
-    """Why a run ended NEEDS_HUMAN (or why one attempt failed)."""
-
-    UNSUPPORTED = "unsupported"            # D5 REVIEW, not eligible, no rule, secret in source: a human's job
-    NO_REPAIR_ROUTE = "no_repair_route"    # the converter cannot produce a different version
-    DEPLOY_FAILED = "deploy_failed"        # PostgreSQL rejected the code
-    DEPLOY_REFUSED = "deploy_refused"      # the deployer's safety checks refused the code
-    TESTS_FAILED = "tests_failed"          # deployed, but behaves differently from Oracle
-    GEMINI_FAILED = "gemini_failed"        # Gemini/API/Redis error, malformed answer, Gemini declined
-    UNCHANGED_OUTPUT = "unchanged_output"  # Gemini returned the previous code again (D-6.4)
-    INVALID_EVIDENCE = "invalid_evidence"  # the repair evidence did not match this run's attempt
-    HARNESS_ERROR = "harness_error"        # the tests could not be judged
-    CONVERTER_ERROR = "converter_error"    # unexpected error inside the converter
 
 
 _CATEGORY_BY_CODE = {
@@ -138,41 +126,6 @@ def can_retry(conversion: ConversionResult) -> bool:
     if conversion.failure_code is None:
         return not conversion.needs_review  # legacy converters: as before, unless review was asked for
     return conversion.failure_code in RETRYABLE_CODES
-
-
-class AttemptRecord(BaseModel):
-    """One convert + validate round, kept for the report."""
-
-    attempt: int
-    version: int
-    tool: ConversionTool
-    compiled_ok: bool                            # PostgreSQL deployed it (not: it behaves like Oracle)
-    compile_error: str | None = None
-    failure_code: str | None = None              # the converter's code when it did not deploy (7a)
-    category: FailureCategory | None = None      # why this attempt failed, if it did (7a)
-    model: str | None = None                     # the LLM asked for this attempt, if any (7a)
-    needs_review: bool = False                   # the converter asked for human sign-off (7a)
-    status: ValidationStatus | None = None       # None when it did not compile
-    passed: int = 0
-    failed: int = 0
-    errors: int = 0
-    failing_tests: list[str] = Field(default_factory=list)
-    feedback_summary: str | None = None          # what was sent back for the next attempt
-
-
-class RepairRun(BaseModel):
-    """Everything the report needs about one object's trip through the loop."""
-
-    object_id: str
-    outcome: RepairOutcome
-    reason: str
-    attempts: list[AttemptRecord]
-    final_conversion: ConversionResult | None = None
-    final_validation: ValidationResult | None = None   # only a test run of final_conversion's version
-    run_id: str | None = None                          # (7a) one per run; older reports have none
-    category: FailureCategory | None = None            # (7a) why NEEDS_HUMAN; None when passed
-    last_validation: ValidationResult | None = None    # (7a) the last test run, whatever version it tested
-    last_deployed_version: int | None = None           # (7a) the version PostgreSQL holds after the run
 
 
 @dataclass(frozen=True)

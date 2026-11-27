@@ -60,7 +60,7 @@ def case(test_id: str, **changes) -> TestCase:
 # --- 1. contract 0.5 ---------------------------------------------------------------------
 
 def test_contract_version_and_the_answer_key_is_complete():
-    assert CONTRACT_VERSION == "0.6"  # step 7c added optional fields; the 0.5 fields are unchanged
+    assert CONTRACT_VERSION == "0.7"  # 7c and 0.7 added fields and models; the 0.5 fields are unchanged
     assert len(ALL_CASES) == 29 and len(GOLDEN_TESTS) == 9  # 8 logical objects; payroll_pkg has 2 members
     assert set(CASE) == set(ORACLE_EXPECTED)
     assert all(c.origin == "golden" for c in ALL_CASES)

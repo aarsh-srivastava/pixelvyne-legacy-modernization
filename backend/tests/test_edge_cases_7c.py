@@ -65,8 +65,8 @@ def gen(object_id: str, **inputs) -> TestCase:
 
 # --- 1. deterministic generation --------------------------------------------------------------
 
-def test_the_default_run_is_150_cases_and_the_contract_is_0_6():
-    assert CONTRACT_VERSION == "0.6"
+def test_the_default_run_is_150_cases_and_the_contract_is_0_7():
+    assert CONTRACT_VERSION == "0.7"   # 0.7 added the pipeline contracts; TestCase is unchanged since 0.6
     assert len(CASES) == generators.DEFAULT_BUDGET == 150
     assert generators.MAX_BUDGET == 400
 
